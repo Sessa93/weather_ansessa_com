@@ -32,5 +32,23 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
+  import-weewx:
+    build: .
+    profiles: ["import"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/weather
+      MARIADB_HOST: ${MARIADB_HOST:-host.docker.internal}
+      MARIADB_PORT: ${MARIADB_PORT:-3306}
+      MARIADB_USER: ${MARIADB_USER:-weewx}
+      MARIADB_PASS: ${MARIADB_PASS:-weewx}
+      MARIADB_DB: ${MARIADB_DB:-weewxdb}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    entrypoint: ["bun", "run", "lib/import-weewx.ts"]
+    restart: "no"
+
 volumes:
   pgdata:
