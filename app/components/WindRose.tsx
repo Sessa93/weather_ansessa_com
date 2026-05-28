@@ -1,13 +1,12 @@
 "use client";
-
 import { useMemo } from "react";
 import {
+  ResponsiveContainer,
   RadarChart,
   Radar,
   PolarGrid,
   PolarAngleAxis,
   PolarRadiusAxis,
-  ResponsiveContainer,
   Tooltip,
 } from "recharts";
 
@@ -39,30 +38,6 @@ const DIRECTIONS = [
 const CARDINAL = new Set(["N", "E", "S", "W"]);
 
 const SPEED_BINS = [
-  {
-    key: "calm",
-    label: "Calm",
-    range: "< 5 km/h",
-    max: 5,
-    color: "#64748b",
-    glow: "#64748b40",
-  },
-  {
-    key: "light",
-    label: "Light",
-    range: "5–15 km/h",
-    max: 15,
-    color: "#38bdf8",
-    glow: "#38bdf840",
-  },
-  {
-    key: "moderate",
-    label: "Moderate",
-    range: "15–25 km/h",
-    max: 25,
-    color: "#34d399",
-    glow: "#34d39940",
-  },
   {
     key: "fresh",
     label: "Fresh",
@@ -182,16 +157,9 @@ export default function WindRose({ data }: { data: Reading[] }) {
             />
             <PolarAngleAxis
               dataKey="direction"
-              tick={({
-                x,
-                y,
-                payload,
-              }: {
-                x: number;
-                y: number;
-                payload: { value: string };
-              }) => {
-                const isCardinal = CARDINAL.has(payload.value);
+              tick={(props) => {
+                const { x, y, payload } = props;
+                const isCardinal = payload && CARDINAL.has(payload.value);
                 return (
                   <text
                     x={x}
@@ -202,7 +170,7 @@ export default function WindRose({ data }: { data: Reading[] }) {
                     fontSize={isCardinal ? 13 : 10}
                     fontWeight={isCardinal ? 600 : 400}
                   >
-                    {payload.value}
+                    {payload?.value}
                   </text>
                 );
               }}
@@ -223,13 +191,16 @@ export default function WindRose({ data }: { data: Reading[] }) {
                 fontSize: 12,
                 boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
               }}
-              formatter={(value: number, name: string) => {
+              formatter={(
+                value: number | string | readonly (string | number)[] | undefined,
+                name?: string | number
+              ) => {
                 const bin = SPEED_BINS.find((b) => b.key === name);
                 return [
-                  <span key={name} style={{ color: bin?.color }}>
-                    {value}%
+                  <span key={String(name)} style={{ color: bin?.color }}>
+                    {typeof value === "number" ? `${value}%` : value ?? "—"}
                   </span>,
-                  bin?.range ?? name,
+                  bin?.range ?? String(name),
                 ];
               }}
               labelStyle={{

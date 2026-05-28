@@ -104,7 +104,27 @@ export default function MonthlyRainChart() {
               stroke="#475569"
             />
             <Tooltip
-              formatter={(value: number) => [`${value.toFixed(1)} mm`, "Rain"]}
+              formatter={(
+                value:
+                  | string
+                  | number
+                  | readonly (string | number)[]
+                  | undefined,
+                name?: string | number,
+              ) => [
+                Array.isArray(value)
+                  ? value.join(", ")
+                  : typeof value === "number"
+                    ? `${value.toFixed(1)} mm`
+                    : typeof value === "string"
+                      ? value
+                      : "—",
+                typeof name === "string"
+                  ? name
+                  : typeof name === "number"
+                    ? name.toString()
+                    : "Rain",
+              ]}
               contentStyle={{
                 backgroundColor: "#1e293b",
                 border: "1px solid #334155",

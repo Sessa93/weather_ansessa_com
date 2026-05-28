@@ -65,12 +65,15 @@ export default function ClimatologyChart() {
     return acc;
   }, []);
 
-  const fmtTooltip = (val: string) => {
-    try {
-      return format(parseISO(val), "d MMM yyyy");
-    } catch {
-      return val;
+  const fmtTooltip = (label: any) => {
+    if (typeof label === "string") {
+      try {
+        return format(parseISO(label), "d MMM yyyy");
+      } catch {
+        return label;
+      }
     }
+    return label;
   };
 
   return (
@@ -120,9 +123,26 @@ export default function ClimatologyChart() {
                 borderRadius: 8,
                 color: "#e2e8f0",
               }}
-              formatter={(value: number, name: string) => [
-                `${value.toFixed(1)} °C`,
-                name,
+              formatter={(
+                value:
+                  | string
+                  | number
+                  | readonly (string | number)[]
+                  | undefined,
+                name?: string | number,
+              ) => [
+                Array.isArray(value)
+                  ? value.join(", ")
+                  : typeof value === "number"
+                    ? `${value.toFixed(1)} °C`
+                    : typeof value === "string"
+                      ? value
+                      : "—",
+                typeof name === "string"
+                  ? name
+                  : typeof name === "number"
+                    ? name.toString()
+                    : "",
               ]}
             />
             <Legend wrapperStyle={{ color: "#94a3b8", fontSize: 12 }} />

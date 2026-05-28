@@ -52,7 +52,8 @@ export async function GET() {
     WHERE timestamp >= NOW() - INTERVAL '3 hours'
   `);
   const baroTrend = Number(trendRows[0]?.baro_trend) || 0;
-  const trendLabel = baroTrend > 0.5 ? "rising" : baroTrend < -0.5 ? "falling" : "steady";
+  const trendLabel =
+    baroTrend > 0.5 ? "rising" : baroTrend < -0.5 ? "falling" : "steady";
 
   const prompt = `You are a friendly weather reporter for a local weather station in Jerago con Orago, Italy (Lombardy, near Varese).
 Based on the data below, first summarize today's weather so far in 2-3 sentences, then provide a brief forecast for the rest of the day in 1-2 sentences.
