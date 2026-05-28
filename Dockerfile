@@ -22,10 +22,18 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV HOSTNAME=0.0.0.0
 ENV PORT=3000
 
+
+
+# Copy dependencies
+COPY --from=builder /app/node_modules ./node_modules
+
 # Copy standalone output + static/public assets
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
+
+# Copy lib directory for import scripts
+COPY --from=builder /app/lib ./lib
 
 EXPOSE 3000
 

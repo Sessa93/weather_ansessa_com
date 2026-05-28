@@ -192,13 +192,17 @@ export default function WindRose({ data }: { data: Reading[] }) {
                 boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
               }}
               formatter={(
-                value: number | string | readonly (string | number)[] | undefined,
-                name?: string | number
+                value:
+                  | number
+                  | string
+                  | readonly (string | number)[]
+                  | undefined,
+                name?: string | number,
               ) => {
                 const bin = SPEED_BINS.find((b) => b.key === name);
                 return [
                   <span key={String(name)} style={{ color: bin?.color }}>
-                    {typeof value === "number" ? `${value}%` : value ?? "—"}
+                    {typeof value === "number" ? `${value}%` : (value ?? "—")}
                   </span>,
                   bin?.range ?? String(name),
                 ];
