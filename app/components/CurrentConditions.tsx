@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import type { CurrentConditions } from "@/lib/types";
 import WeatherIcon from "./WeatherIcon";
 
-function windDirection(deg: number): string {
+function windDirection(deg: number | null | undefined): string {
   if (deg === null || deg === undefined) return "";
   const dirs = [
     "N",
@@ -31,10 +31,7 @@ export default function CurrentConditionsPanel() {
   const [data, setData] = useState<CurrentConditions | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const isSynced = data?.rx_state === 1 || data?.rx_state === null;
-
   const fmt = (val: number | null | undefined, decimals: number) => {
-    if (data?.rx_state !== null && data?.rx_state !== 1) return "n/a";
     if (val === null || val === undefined) return "n/a";
     return val.toFixed(decimals);
   };
@@ -91,11 +88,8 @@ export default function CurrentConditionsPanel() {
     <div className="bg-slate-800 rounded-lg shadow-lg overflow-hidden border border-slate-700">
       {/* Status bar */}
       <div className="bg-slate-950 text-slate-300 px-4 py-2 text-sm flex items-center gap-2 border-b border-slate-700">
-        <span className={`inline-block w-2 h-2 rounded-full animate-pulse ${isSynced ? 'bg-green-400' : 'bg-orange-400'}`} />
-        {isSynced 
-          ? `Connected to weather station live. Data received ${timestamp}`
-          : `Weather station is searching for sensors... (Signal lost at ${timestamp})`
-        }
+        <span className="inline-block w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+        Connected to weather station live. Data received {timestamp}
       </div>
 
       {/* Main current conditions */}
@@ -110,17 +104,17 @@ export default function CurrentConditionsPanel() {
           <div className="flex items-center gap-4">
             <div className="text-6xl font-light text-slate-100">
               {fmt(data.temp, 1)}
-              {isSynced && <span className="text-3xl text-slate-400">°C</span>}
+              <span className="text-3xl text-slate-400">°C</span>
             </div>
           </div>
 
           {/* Condition + feels like */}
           <div>
             <div className="text-xl font-medium text-slate-200">
-              {isSynced ? data.condition : "Sensor Offline"}
+              {data.condition}
             </div>
             <div className="text-sm text-slate-400">
-              Feels like: {fmt(data.feels_like, 1)} {isSynced ? "°C" : ""}
+              Feels like: {fmt(data.feels_like, 1)} °C
             </div>
           </div>
 
@@ -131,7 +125,7 @@ export default function CurrentConditionsPanel() {
                 High
               </div>
               <div className="text-lg font-medium text-red-400">
-                {fmt(data.high, 1)} {isSynced ? "°C" : ""}
+                {fmt(data.high, 1)} °C
               </div>
             </div>
             <div className="text-center">
@@ -139,39 +133,38 @@ export default function CurrentConditionsPanel() {
                 Low
               </div>
               <div className="text-lg font-medium text-blue-400">
-                {fmt(data.low, 1)} {isSynced ? "°C" : ""}
+                {fmt(data.low, 1)} °C
               </div>
             </div>
           </div>
         </div>
 
-        {/* Grid of metrics */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
           <MetricCard
             label="Wind"
-            value={isSynced && data.wind_speed !== null ? `${data.wind_speed.toFixed(0)} km/h ${windDirection(data.wind_dir ?? 0)}` : "n/a"}
-            sub={isSynced && data.wind_gust !== null ? `Gust: ${data.wind_gust.toFixed(0)} km/h` : ""}
+            value={`${fmt(data.wind_speed, 0)} km/h ${windDirection(data.wind_dir)}`}
+            sub={`Gust: ${fmt(data.wind_gust, 0)} km/h`}
             icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.7 7.7a2.5 2.5 0 1 1 1.8 4.3H2" /><path d="M9.6 4.6A2 2 0 1 1 11 8H2" /><path d="M12.6 19.4A2 2 0 1 0 14 16H2" /></svg>}
           />
           <MetricCard
             label="Barometer"
-            value={data.barometer !== null ? `${data.barometer.toFixed(1)} mbar` : "n/a"}
+            value={`${fmt(data.barometer, 1)} mbar`}
             icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><path d="M12 7v5l3 3" /></svg>}
           />
           <MetricCard
             label="Dew Point"
-            value={isSynced && data.dew_point !== null ? `${data.dew_point.toFixed(1)} °C` : "n/a"}
+            value={`${fmt(data.dew_point, 1)} °C`}
             icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z" /></svg>}
           />
           <MetricCard 
             label="Humidity" 
-            value={isSynced && data.humidity !== null ? `${data.humidity.toFixed(0)}%` : "n/a"} 
+            value={`${fmt(data.humidity, 0)}%`} 
             icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z" /></svg>}
           />
           <MetricCard
             label="Rain Today"
-            value={isSynced && data.rain_today !== null ? `${(+data.rain_today).toFixed(1)} mm` : "n/a"}
-            sub={isSynced && data.rain_rate !== null ? `Rate: ${data.rain_rate.toFixed(1)} mm/hr` : ""}
+            value={`${fmt(data.rain_today, 1)} mm`}
+            sub={`Rate: ${fmt(data.rain_rate, 1)} mm/hr`}
             icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242" /><path d="M16 14v6" /><path d="M8 14v6" /><path d="M12 16v6" /></svg>}
           />
           <MetricCard 

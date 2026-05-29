@@ -89,7 +89,6 @@ interface StationOutdoor {
   rainfall_daily: number | null;
   rainfall_monthly: number | null;
   rainfall_year: number | null;
-  rx_state: number | null;
   [key: string]: unknown;
 }
 
@@ -131,7 +130,6 @@ export interface StationReading {
   rain_daily: number;
   rain_monthly: number;
   rain_yearly: number;
-  rx_state: number | null;
 }
 
 export async function fetchStationData(): Promise<StationReading> {
@@ -190,6 +188,5 @@ export async function fetchStationData(): Promise<StationReading> {
     rain_daily: rainCountToMm(outdoor.rainfall_daily, rainSize),
     rain_monthly: rainCountToMm(outdoor.rainfall_monthly, rainSize),
     rain_yearly: rainCountToMm(outdoor.rainfall_year, rainSize),
-    rx_state: outdoor.rx_state ?? null,
   };
 }

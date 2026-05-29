@@ -62,5 +62,4 @@ export interface CurrentConditions {
   sunset: string;
   moon_phase: string;
   moon_visible: number;
-  rx_state: number | null;
 }

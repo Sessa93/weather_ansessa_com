@@ -7,6 +7,10 @@ export async function GET() {
   let live: StationReading | null = null;
   try {
     live = await fetchStationData();
+    // If live data has no temperature, treat as missing and fall back to DB
+    if (live && live.outside_temp === null) {
+      live = null;
+    }
   } catch {
     // Station unreachable – fall back to latest DB reading
   }
@@ -48,13 +52,14 @@ export async function GET() {
       sunset: "9:03 PM",
       moon_phase: "Waxing Gibbous",
       moon_visible: 92,
-      rx_state: live.rx_state,
     });
   }
 
-  // Fallback: latest reading from DB
+  // Fallback: latest reading from DB that has sensor data
   const { rows } = await pool.query(
-    `SELECT * FROM weather_readings ORDER BY timestamp DESC LIMIT 1`,
+    `SELECT * FROM weather_readings 
+     WHERE outside_temp IS NOT NULL 
+     ORDER BY timestamp DESC LIMIT 1`,
   );
 
   if (rows.length === 0) {
@@ -90,7 +95,6 @@ export async function GET() {
     sunset: "9:03 PM",
     moon_phase: "Waxing Gibbous",
     moon_visible: 92,
-    rx_state: null,
   });
 }
 

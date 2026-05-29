@@ -96,25 +96,32 @@ export async function GET() {
 
   try {
     const live = await fetchStationData();
-    now = live.timestamp;
-    temp = live.outside_temp ?? 0;
-    humidity = live.humidity ?? 0;
-    dewPoint = live.dew_point ?? 0;
-    windSpeed = live.wind_speed ?? 0;
-    windGust = live.wind_gust ?? 0;
-    windDir = live.wind_dir ?? 0;
-    rainRate = live.rain_rate ?? 0;
-    barometer = live.barometer ?? 0;
-    windChill = live.wind_chill ?? 0;
-    heatIndex = live.heat_index ?? 0;
-    feelsLike = live.feels_like ?? temp;
-    rainDaily = live.rain_daily ?? 0;
-    rainMonthly = live.rain_monthly ?? 0;
-    rainYearly = live.rain_yearly ?? 0;
+    if (live && live.outside_temp !== null) {
+      now = live.timestamp;
+      temp = live.outside_temp ?? 0;
+      humidity = live.humidity ?? 0;
+      dewPoint = live.dew_point ?? 0;
+      windSpeed = live.wind_speed ?? 0;
+      windGust = live.wind_gust ?? 0;
+      windDir = live.wind_dir ?? 0;
+      rainRate = live.rain_rate ?? 0;
+      barometer = live.barometer ?? 0;
+      windChill = live.wind_chill ?? 0;
+      heatIndex = live.heat_index ?? 0;
+      feelsLike = live.feels_like ?? temp;
+      rainDaily = live.rain_daily ?? 0;
+      rainMonthly = live.rain_monthly ?? 0;
+      rainYearly = live.rain_yearly ?? 0;
+    } else {
+      // Treat null temperature as "no data" and trigger DB fallback
+      throw new Error("Missing live sensor data");
+    }
   } catch {
-    // Fall back to latest DB row
+    // Fall back to latest DB row that has sensor data
     const { rows } = await pool.query(
-      `SELECT * FROM weather_readings ORDER BY timestamp DESC LIMIT 1`,
+      `SELECT * FROM weather_readings 
+       WHERE outside_temp IS NOT NULL 
+       ORDER BY timestamp DESC LIMIT 1`,
     );
     if (rows.length) {
       const r = rows[0];
