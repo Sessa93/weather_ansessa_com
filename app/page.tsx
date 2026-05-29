@@ -5,6 +5,7 @@ import WindyRadar from "./components/WindyRadar";
 import MonthlyRainChart from "./components/MonthlyRainChart";
 import ClimatologyChart from "./components/ClimatologyChart";
 import DaySummary from "./components/DaySummary";
+import Forecast from "./components/Forecast";
 
 export default function Home() {
   return (
@@ -13,6 +14,8 @@ export default function Home() {
         <CurrentConditions />
         <WindyRadar />
       </div>
+
+      <Forecast />
 
       <DaySummary />
 

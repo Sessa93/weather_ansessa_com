@@ -31,6 +31,9 @@ Create a `.env.local` file in the root directory and configure the following:
 | `OPENAI_API_KEY` | OpenAI API Key for weather summaries | (Required for AI features) |
 | `INGEST_INTERVAL_MS` | Frequency of background data ingestion in milliseconds | `600000` (10 minutes) |
 | `INGEST_SECRET` | Optional bearer token to protect the `/api/ingest` endpoint | - |
+| `STATION_LAT` | Latitude of the station for forecast | `45.71` |
+| `STATION_LON` | Longitude of the station for forecast | `8.79` |
+| `STATION_ALTITUDE` | Altitude of the station in metres | `330` |
 | `MARIADB_HOST` | Host for WeeWX import (MariaDB) | `127.0.0.1` |
 | `MARIADB_PORT` | Port for WeeWX import | `3306` |
 | `MARIADB_USER` | Username for WeeWX import | `weewx` |

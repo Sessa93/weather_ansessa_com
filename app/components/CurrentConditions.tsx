@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import type { CurrentConditions } from "@/lib/types";
+import WeatherIcon from "./WeatherIcon";
 
 function windDirection(deg: number): string {
   const dirs = [
@@ -88,11 +89,16 @@ export default function CurrentConditionsPanel() {
       {/* Main current conditions */}
       <div className="p-6">
         <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
+          {/* Weather Icon */}
+          <div className="bg-slate-700/30 p-4 rounded-full border border-slate-600">
+            <WeatherIcon condition={data.condition} className="w-16 h-16" />
+          </div>
+
           {/* Big temperature */}
           <div className="flex items-center gap-4">
             <div className="text-6xl font-light text-slate-100">
               {data.temp.toFixed(1)}
-              <span className="text-3xl">°C</span>
+              <span className="text-3xl text-slate-400">°C</span>
             </div>
           </div>
 
@@ -133,27 +139,44 @@ export default function CurrentConditionsPanel() {
             label="Wind"
             value={`${data.wind_speed.toFixed(0)} km/h ${windDirection(data.wind_dir)}`}
             sub={`Gust: ${data.wind_gust.toFixed(0)} km/h`}
+            icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.7 7.7a2.5 2.5 0 1 1 1.8 4.3H2" /><path d="M9.6 4.6A2 2 0 1 1 11 8H2" /><path d="M12.6 19.4A2 2 0 1 0 14 16H2" /></svg>}
           />
           <MetricCard
             label="Barometer"
             value={`${data.barometer.toFixed(1)} mbar`}
+            icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><path d="M12 7v5l3 3" /></svg>}
           />
           <MetricCard
             label="Dew Point"
             value={`${data.dew_point.toFixed(1)} °C`}
+            icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z" /></svg>}
           />
-          <MetricCard label="Humidity" value={`${data.humidity.toFixed(0)}%`} />
+          <MetricCard 
+            label="Humidity" 
+            value={`${data.humidity.toFixed(0)}%`} 
+            icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z" /></svg>}
+          />
           <MetricCard
             label="Rain Today"
             value={`${(+data.rain_today).toFixed(1)} mm`}
             sub={`Rate: ${data.rain_rate.toFixed(1)} mm/hr`}
+            icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242" /><path d="M16 14v6" /><path d="M8 14v6" /><path d="M12 16v6" /></svg>}
           />
-          <MetricCard label="Sunrise" value={data.sunrise} />
-          <MetricCard label="Sunset" value={data.sunset} />
+          <MetricCard 
+            label="Sunrise" 
+            value={data.sunrise} 
+            icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v8" /><path d="m4.93 10.93 1.41-1.41" /><path d="M2 18h2" /><path d="M20 18h2" /><path d="m19.07 10.93-1.41-1.41" /><path d="M22 22H2" /><path d="m8 22 4-4 4 4" /></svg>}
+          />
+          <MetricCard 
+            label="Sunset" 
+            value={data.sunset} 
+            icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 10V2" /><path d="m4.93 10.93 1.41-1.41" /><path d="M2 18h2" /><path d="M20 18h2" /><path d="m19.07 10.93-1.41-1.41" /><path d="M22 22H2" /><path d="m16 22-4-4-4 4" /></svg>}
+          />
           <MetricCard
             label="Moon"
             value={data.moon_phase}
             sub={`${data.moon_visible}% visible`}
+            icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" /></svg>}
           />
         </div>
       </div>
@@ -165,18 +188,25 @@ function MetricCard({
   label,
   value,
   sub,
+  icon,
 }: {
   label: string;
   value: string;
   sub?: string;
+  icon?: React.ReactNode;
 }) {
   return (
-    <div className="bg-slate-700/50 rounded-lg p-3">
-      <div className="text-xs text-slate-400 uppercase font-semibold mb-1">
-        {label}
+    <div className="bg-slate-700/50 rounded-lg p-3 flex items-start gap-3">
+      {icon && <div className="mt-1 text-slate-400">{icon}</div>}
+      <div className="flex-1 min-w-0">
+        <div className="text-xs text-slate-400 uppercase font-semibold mb-1">
+          {label}
+        </div>
+        <div className="text-base font-medium text-slate-100 truncate">
+          {value}
+        </div>
+        {sub && <div className="text-xs text-slate-500 mt-0.5">{sub}</div>}
       </div>
-      <div className="text-base font-medium text-slate-100">{value}</div>
-      {sub && <div className="text-xs text-slate-500 mt-0.5">{sub}</div>}
     </div>
   );
 }
