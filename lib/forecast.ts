@@ -14,32 +14,41 @@ export async function fetchForecast(): Promise<DailyForecast[]> {
   
   console.log(`[forecast] Fetching from: ${url}`);
 
-  const res = await fetch(url, { 
-    next: { revalidate: 3600 },
-    headers: {
-      'User-Agent': 'WeatherDashboard/1.0 (https://github.com/ansessa/weather_ansessa_com)'
+  try {
+    const res = await fetch(url, { 
+      next: { revalidate: 3600 },
+      headers: {
+        'User-Agent': 'WeatherDashboard/1.0 (https://github.com/ansessa/weather_ansessa_com)'
+      }
+    });
+
+    if (!res.ok) {
+      const errorText = await res.text();
+      console.error(`[forecast] API error: ${res.status} ${errorText}`);
+      throw new Error(`Failed to fetch forecast: ${res.status}`);
     }
-  });
 
-  if (!res.ok) {
-    const errorText = await res.text();
-    console.error(`[forecast] API error: ${res.status} ${errorText}`);
-    throw new Error(`Failed to fetch forecast: ${res.status}`);
+    const data = await res.json();
+    
+    if (!data.daily || !data.daily.time) {
+      console.error(`[forecast] Invalid API response:`, data);
+      throw new Error("Invalid forecast data received");
+    }
+    
+    return data.daily.time.map((time: string, index: number) => ({
+      date: time,
+      maxTemp: data.daily.temperature_2m_max[index],
+      minTemp: data.daily.temperature_2m_min[index],
+      weatherCode: data.daily.weather_code[index],
+    }));
+  } catch (error) {
+    if (error instanceof Error && (error.message.includes("ECONNREFUSED") || error.message.includes("ConnectionRefused") || error.message.includes("fetch failed"))) {
+      console.error(`[forecast] Network error reaching Open-Meteo: ${error.message}. Check internet connection or DNS.`);
+    } else {
+      console.error(`[forecast] Unexpected error:`, error);
+    }
+    throw error;
   }
-
-  const data = await res.json();
-  
-  if (!data.daily || !data.daily.time) {
-    console.error(`[forecast] Invalid API response:`, data);
-    throw new Error("Invalid forecast data received");
-  }
-  
-  return data.daily.time.map((time: string, index: number) => ({
-    date: time,
-    maxTemp: data.daily.temperature_2m_max[index],
-    minTemp: data.daily.temperature_2m_min[index],
-    weatherCode: data.daily.weather_code[index],
-  }));
 }
 
 /**

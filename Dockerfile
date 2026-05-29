@@ -14,7 +14,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN bun run build
 
 # -- Stage 3: Production image --
-FROM oven/bun:1-slim AS runner
+FROM node:20-slim AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
@@ -22,19 +22,16 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV HOSTNAME=0.0.0.0
 ENV PORT=3000
 
+# Copy bun binary from builder for utility scripts
+COPY --from=builder /usr/local/bin/bun /usr/local/bin/bun
 
-
-# Copy dependencies
-COPY --from=builder /app/node_modules ./node_modules
-
-# Copy standalone output + static/public assets
+# Copy dependencies and standalone output
 COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
-
-# Copy lib directory for import scripts
 COPY --from=builder /app/lib ./lib
 
 EXPOSE 3000
 
-CMD ["bun", "server.js"]
+CMD ["node", "server.js"]
