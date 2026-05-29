@@ -153,6 +153,7 @@ export default function ClimatologyChart() {
               stroke="#f87171"
               dot={false}
               strokeWidth={1.5}
+              connectNulls
             />
             <Line
               type="monotone"
@@ -161,6 +162,7 @@ export default function ClimatologyChart() {
               stroke="#a3e635"
               dot={false}
               strokeWidth={1.5}
+              connectNulls
             />
             <Line
               type="monotone"
@@ -169,6 +171,7 @@ export default function ClimatologyChart() {
               stroke="#38bdf8"
               dot={false}
               strokeWidth={1.5}
+              connectNulls
             />
           </LineChart>
         </ResponsiveContainer>

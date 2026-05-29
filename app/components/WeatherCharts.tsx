@@ -88,6 +88,7 @@ export function TemperatureChart({
             stroke="#ef4444"
             dot={false}
             strokeWidth={2}
+            connectNulls
           />
           <Line
             type="monotone"
@@ -96,6 +97,7 @@ export function TemperatureChart({
             stroke="#3b82f6"
             dot={false}
             strokeWidth={1.5}
+            connectNulls
           />
           <Line
             type="monotone"
@@ -105,6 +107,7 @@ export function TemperatureChart({
             dot={false}
             strokeWidth={1}
             strokeDasharray="4 2"
+            connectNulls
           />
           <Line
             type="monotone"
@@ -114,6 +117,7 @@ export function TemperatureChart({
             dot={false}
             strokeWidth={1}
             strokeDasharray="4 2"
+            connectNulls
           />
         </LineChart>
       </ResponsiveContainer>
@@ -162,6 +166,7 @@ export function WindChart({ data, long }: { data: Reading[]; long?: boolean }) {
             fill="#78350f"
             fillOpacity={0.4}
             strokeWidth={1.5}
+            connectNulls
           />
           <Area
             type="monotone"
@@ -171,6 +176,7 @@ export function WindChart({ data, long }: { data: Reading[]; long?: boolean }) {
             fill="#064e3b"
             fillOpacity={0.4}
             strokeWidth={2}
+            connectNulls
           />
         </AreaChart>
       </ResponsiveContainer>
@@ -240,6 +246,7 @@ export function RainChart({ data, long }: { data: Reading[]; long?: boolean }) {
             stroke="#1d4ed8"
             dot={false}
             strokeWidth={2}
+            connectNulls
           />
         </ComposedChart>
       </ResponsiveContainer>
@@ -291,6 +298,7 @@ export function BarometerChart({
             fill="#312e81"
             fillOpacity={0.4}
             strokeWidth={2}
+            connectNulls
           />
         </AreaChart>
       </ResponsiveContainer>
