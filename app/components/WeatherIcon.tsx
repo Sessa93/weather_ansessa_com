@@ -42,8 +42,6 @@ export default function WeatherIcon({ condition, code, className = "w-8 h-8" }: 
     case "cloudy":
       return (
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`${className} text-slate-400`}>
-          <path d="M17.5 19x" />
-          <path d="M17.5 19A3.5 3.5 0 0 0 18 12h-1.25a5 5 0 0 0-9.5-1.5E" />
           <path d="M17.5 19h-11A4.5 4.5 0 0 1 2 14.5V14a4.5 4.5 0 0 1 4.5-4.5H7a5 5 0 0 1 9.5-1.5 3.5 3.5 0 0 1 1 7" />
         </svg>
       );

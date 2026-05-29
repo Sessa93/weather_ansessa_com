@@ -28,6 +28,9 @@ services:
     environment:
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/weather
       STATION_URL: ${STATION_URL:-http://host.docker.internal:8888}
+      STATION_LAT: ${STATION_LAT:-45.71}
+      STATION_LON: ${STATION_LON:-8.79}
+      STATION_ALTITUDE: ${STATION_ALTITUDE:-330}
       # INGEST_SECRET: ${INGEST_SECRET:-}
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -40,6 +43,9 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/weather
+      STATION_LAT: ${STATION_LAT:-45.71}
+      STATION_LON: ${STATION_LON:-8.79}
+      STATION_ALTITUDE: ${STATION_ALTITUDE:-330}
       MARIADB_HOST: ${MARIADB_HOST:-host.docker.internal}
       MARIADB_PORT: ${MARIADB_PORT:-3306}
       MARIADB_USER: ${MARIADB_USER:-weewx}

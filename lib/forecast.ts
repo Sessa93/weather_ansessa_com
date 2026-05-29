@@ -11,13 +11,28 @@ export async function fetchForecast(): Promise<DailyForecast[]> {
   const lon = process.env.STATION_LON ?? "8.79";
 
   const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto`;
+  
+  console.log(`[forecast] Fetching from: ${url}`);
 
-  const res = await fetch(url, { next: { revalidate: 3600 } }); // Cache for 1 hour
+  const res = await fetch(url, { 
+    next: { revalidate: 3600 },
+    headers: {
+      'User-Agent': 'WeatherDashboard/1.0 (https://github.com/ansessa/weather_ansessa_com)'
+    }
+  });
+
   if (!res.ok) {
-    throw new Error("Failed to fetch forecast");
+    const errorText = await res.text();
+    console.error(`[forecast] API error: ${res.status} ${errorText}`);
+    throw new Error(`Failed to fetch forecast: ${res.status}`);
   }
 
   const data = await res.json();
+  
+  if (!data.daily || !data.daily.time) {
+    console.error(`[forecast] Invalid API response:`, data);
+    throw new Error("Invalid forecast data received");
+  }
   
   return data.daily.time.map((time: string, index: number) => ({
     date: time,
