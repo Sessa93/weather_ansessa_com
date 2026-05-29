@@ -14,6 +14,7 @@ interface RecordSnapshot {
 interface RecordsData {
   today: RecordSnapshot;
   month: RecordSnapshot;
+  year: RecordSnapshot;
 }
 
 function fmt(v: number | null | undefined): string {
@@ -31,27 +32,72 @@ export default function RecordSnapshots() {
       .catch(() => {});
   }, []);
 
-  if (!data) return null;
+  if (!data) {
+    return (
+      <div className="bg-slate-800 rounded-lg shadow-lg border border-slate-700 p-6 animate-pulse">
+        <div className="h-6 bg-slate-700 rounded w-48 mb-6" />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="h-64 bg-slate-700 rounded-2xl" />
+          <div className="h-64 bg-slate-700 rounded-2xl" />
+          <div className="h-64 bg-slate-700 rounded-2xl" />
+        </div>
+      </div>
+    );
+  }
 
-  const today = new Date().toLocaleDateString("en-US", {
-    weekday: "long",
-    month: "long",
+  const todayLabel = "Today";
+  const todaySub = new Date().toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "short",
     day: "numeric",
-    year: "numeric",
   });
-  const monthLabel = new Date().toLocaleDateString("en-US", {
-    month: "long",
-    year: "numeric",
-  });
+  const monthLabel = new Date().toLocaleDateString("en-US", { month: "long" });
+  const yearLabel = new Date().getFullYear().toString();
 
   return (
-    <div className="bg-slate-800 rounded-lg shadow-lg border border-slate-700 p-4">
-      <h3 className="text-sm font-semibold text-slate-300 mb-3">
-        Weather Record Snapshots
-      </h3>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <SnapshotCard title={today} data={data.today} />
-        <SnapshotCard title={monthLabel} data={data.month} />
+    <div className="bg-slate-800 rounded-lg shadow-lg border border-slate-700 p-6">
+      <div className="flex items-center gap-2 mb-6">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="text-sky-400"
+        >
+          <path d="M12 2v20" />
+          <path d="m2 12 5 5 5-5 5 5 5-5" />
+          <path d="M5 22h14" />
+          <path d="M5 2h14" />
+        </svg>
+        <h2 className="text-lg font-semibold text-slate-100">
+          Weather Record Snapshots
+        </h2>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <SnapshotCard
+          title={todayLabel}
+          subtitle={todaySub}
+          data={data.today}
+          accent="sky"
+        />
+        <SnapshotCard
+          title={monthLabel}
+          subtitle="Monthly totals"
+          data={data.month}
+          accent="purple"
+        />
+        <SnapshotCard
+          title={yearLabel}
+          subtitle="Annual summary"
+          data={data.year}
+          accent="indigo"
+        />
       </div>
     </div>
   );
@@ -59,31 +105,163 @@ export default function RecordSnapshots() {
 
 function SnapshotCard({
   title,
+  subtitle,
   data,
+  accent,
 }: {
   title: string;
+  subtitle: string;
   data: RecordSnapshot;
+  accent: "sky" | "purple" | "indigo";
 }) {
+  const accentColors = {
+    sky: "text-sky-400",
+    purple: "text-purple-400",
+    indigo: "text-indigo-400",
+  };
+
   return (
-    <div className="border border-slate-600 rounded-lg p-3 bg-slate-700/40">
-      <div className="text-xs font-semibold text-sky-400 mb-2">{title}</div>
-      <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
-        <Row label="High" value={`${fmt(data.high_temp)} °C`} />
-        <Row label="Low" value={`${fmt(data.low_temp)} °C`} />
-        <Row label="Avg Wind" value={`${fmt(data.avg_wind)} km/h`} />
-        <Row label="Max Wind" value={`${fmt(data.high_wind)} km/h`} />
-        <Row label="Rain" value={`${fmt(data.total_rain)} mm`} />
-        <Row label="Max Rate" value={`${fmt(data.high_rain_rate)} mm/hr`} />
+    <div className="relative overflow-hidden bg-slate-900/40 border border-slate-700 rounded-2xl p-5 hover:bg-slate-900/60 transition-colors group">
+      <div
+        className={`absolute -right-4 -top-4 w-20 h-20 rounded-full bg-current opacity-[0.03] group-hover:opacity-[0.05] transition-opacity ${accentColors[accent]}`}
+      />
+
+      <div className="mb-4">
+        <div
+          className={`text-sm font-bold uppercase tracking-wider ${accentColors[accent]}`}
+        >
+          {title}
+        </div>
+        <div className="text-xs text-slate-500">{subtitle}</div>
+      </div>
+
+      <div className="space-y-4">
+        {/* Temp section */}
+        <div>
+          <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500 uppercase tracking-tight mb-2">
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z" />
+            </svg>
+            Temperature
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <MetricBox
+              label="High"
+              value={`${fmt(data.high_temp)}°`}
+              color="text-red-400"
+            />
+            <MetricBox
+              label="Low"
+              value={`${fmt(data.low_temp)}°`}
+              color="text-blue-400"
+            />
+          </div>
+        </div>
+
+        {/* Wind section */}
+        <div>
+          <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500 uppercase tracking-tight mb-2">
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M17.7 7.7a2.5 2.5 0 1 1 1.8 4.3H2" />
+              <path d="M9.6 4.6A2 2 0 1 1 11 8H2" />
+              <path d="M12.6 19.4A2 2 0 1 0 14 16H2" />
+            </svg>
+            Wind Speed
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <MetricBox
+              label="Average"
+              value={`${fmt(data.avg_wind)}`}
+              unit="km/h"
+            />
+            <MetricBox
+              label="Max Gust"
+              value={`${fmt(data.high_wind)}`}
+              unit="km/h"
+            />
+          </div>
+        </div>
+
+        {/* Rain section */}
+        <div>
+          <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500 uppercase tracking-tight mb-2">
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242" />
+              <path d="M16 14v6" />
+              <path d="M8 14v6" />
+              <path d="M12 16v6" />
+            </svg>
+            Precipitation
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <MetricBox
+              label="Total Rain"
+              value={`${fmt(data.total_rain)}`}
+              unit="mm"
+            />
+            <MetricBox
+              label="Max Rate"
+              value={`${fmt(data.high_rain_rate)}`}
+              unit="mm/h"
+            />
+          </div>
+        </div>
       </div>
     </div>
   );
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+function MetricBox({
+  label,
+  value,
+  unit,
+  color = "text-slate-200",
+}: {
+  label: string;
+  value: string;
+  unit?: string;
+  color?: string;
+}) {
   return (
-    <>
-      <span className="text-slate-400">{label}:</span>
-      <span className="font-medium text-slate-200">{value}</span>
-    </>
+    <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-2.5">
+      <div className="text-[9px] uppercase font-bold text-slate-500 mb-0.5">
+        {label}
+      </div>
+      <div className={`text-sm font-semibold ${color}`}>
+        {value}
+        {unit && (
+          <span className="text-[10px] ml-0.5 text-slate-500 font-normal">
+            {unit}
+          </span>
+        )}
+      </div>
+    </div>
   );
 }
