@@ -32,6 +32,8 @@ services:
       STATION_LON: ${STATION_LON:-8.79}
       STATION_ALTITUDE: ${STATION_ALTITUDE:-330}
       # INGEST_SECRET: ${INGEST_SECRET:-}
+    dns:
+      - "8.8.8.8"
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
