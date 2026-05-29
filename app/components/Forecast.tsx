@@ -11,19 +11,35 @@ export default function Forecast() {
 
   useEffect(() => {
     async function fetchForecast() {
+      console.log("[Forecast] Fetching forecast data...");
       try {
         const res = await fetch("/api/forecast");
-        if (!res.ok) throw new Error("Failed to fetch forecast");
+        if (!res.ok) {
+          const errorData = await res.json().catch(() => ({}));
+          throw new Error(errorData.error || `Failed to fetch forecast: ${res.status}`);
+        }
         const json = await res.json();
+        console.log("[Forecast] Data received:", json);
         setData(json);
       } catch (err) {
-        setError("Forecast unavailable");
+        console.error("[Forecast] Error:", err);
+        setError(err instanceof Error ? err.message : "Forecast unavailable");
       }
     }
     fetchForecast();
   }, []);
 
-  if (error) return null; // Don't show anything if forecast fails
+  if (error) {
+    return (
+      <div className="bg-slate-800 rounded-lg shadow-lg border border-red-900/50 p-6 flex flex-col items-center justify-center text-center">
+        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-red-500 mb-2">
+          <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        <h3 className="text-slate-200 font-medium">{error}</h3>
+        <p className="text-slate-400 text-sm mt-1">Check your station location settings and internet connection.</p>
+      </div>
+    );
+  }
   if (!data) {
     return (
       <div className="bg-slate-800 rounded-lg p-6 animate-pulse">

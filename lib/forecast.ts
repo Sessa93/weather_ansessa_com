@@ -7,8 +7,8 @@ export interface DailyForecast {
 
 export async function fetchForecast(): Promise<DailyForecast[]> {
   // Coordinates for Jerago con Orago (approximate)
-  const lat = process.env.STATION_LAT ?? "45.71";
-  const lon = process.env.STATION_LON ?? "8.79";
+  const lat = process.env.STATION_LAT || "45.71";
+  const lon = process.env.STATION_LON || "8.79";
 
   const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto`;
   

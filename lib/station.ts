@@ -21,7 +21,7 @@ function inHgToMbar(inHg: number | null): number | null {
 }
 
 /** Station altitude in metres (Jerago con Orago, ~330m) */
-const STATION_ALTITUDE_M = parseFloat(process.env.STATION_ALTITUDE ?? "330");
+const STATION_ALTITUDE_M = parseFloat(process.env.STATION_ALTITUDE || "330");
 
 /**
  * Reduce station (absolute) pressure to sea-level pressure using

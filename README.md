@@ -70,7 +70,8 @@ The project is optimized for Docker using `docker-compose`.
 
 ```bash
 # Start the entire stack (App + DB)
-docker-compose up -d
+# Use --build to ensure latest code changes are included
+docker-compose up -d --build
 ```
 
 The app will be available at [http://localhost:8083](http://localhost:8083).
