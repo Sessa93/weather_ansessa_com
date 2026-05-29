@@ -21,17 +21,17 @@ import type { ReactNode } from "react";
 
 interface Reading {
   timestamp: string;
-  outside_temp: number;
-  dew_point: number;
-  wind_chill: number;
-  heat_index: number;
-  wind_speed: number;
-  wind_gust: number;
-  wind_dir: number;
-  barometer: number;
-  rain: number;
-  rain_rate: number;
-  humidity: number;
+  outside_temp: number | null;
+  dew_point: number | null;
+  wind_chill: number | null;
+  heat_index: number | null;
+  wind_speed: number | null;
+  wind_gust: number | null;
+  wind_dir: number | null;
+  barometer: number | null;
+  rain: number | null;
+  rain_rate: number | null;
+  humidity: number | null;
 }
 
 function formatTime(label: ReactNode) {

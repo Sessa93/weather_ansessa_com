@@ -1,18 +1,18 @@
 export interface WeatherReading {
   id: number;
   timestamp: string;
-  outside_temp: number;
-  feels_like: number;
-  dew_point: number;
-  humidity: number;
-  wind_speed: number;
-  wind_gust: number;
-  wind_dir: number;
-  barometer: number;
-  rain: number;
-  rain_rate: number;
-  wind_chill: number;
-  heat_index: number;
+  outside_temp: number | null;
+  feels_like: number | null;
+  dew_point: number | null;
+  humidity: number | null;
+  wind_speed: number | null;
+  wind_gust: number | null;
+  wind_dir: number | null;
+  barometer: number | null;
+  rain: number | null;
+  rain_rate: number | null;
+  wind_chill: number | null;
+  heat_index: number | null;
 }
 
 export interface DailyRecord {
@@ -44,22 +44,23 @@ export interface ForecastHour {
 
 export interface CurrentConditions {
   timestamp: string;
-  temp: number;
-  feels_like: number;
+  temp: number | null;
+  feels_like: number | null;
   condition: string;
   icon: string;
-  high: number;
-  low: number;
-  wind_speed: number;
-  wind_gust: number;
-  wind_dir: number;
-  barometer: number;
-  dew_point: number;
-  humidity: number;
-  rain_today: number;
-  rain_rate: number;
+  high: number | null;
+  low: number | null;
+  wind_speed: number | null;
+  wind_gust: number | null;
+  wind_dir: number | null;
+  barometer: number | null;
+  dew_point: number | null;
+  humidity: number | null;
+  rain_today: number | null;
+  rain_rate: number | null;
   sunrise: string;
   sunset: string;
   moon_phase: string;
   moon_visible: number;
+  rx_state: number | null;
 }

@@ -48,6 +48,7 @@ export async function GET() {
       sunset: "9:03 PM",
       moon_phase: "Waxing Gibbous",
       moon_visible: 92,
+      rx_state: live.rx_state,
     });
   }
 
@@ -89,6 +90,7 @@ export async function GET() {
     sunset: "9:03 PM",
     moon_phase: "Waxing Gibbous",
     moon_visible: 92,
+    rx_state: null,
   });
 }
 

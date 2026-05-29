@@ -11,9 +11,9 @@ import {
 } from "recharts";
 
 interface Reading {
-  wind_speed: number;
-  wind_gust: number;
-  wind_dir: number;
+  wind_speed: number | null;
+  wind_gust: number | null;
+  wind_dir: number | null;
 }
 
 const DIRECTIONS = [
