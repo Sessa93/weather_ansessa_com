@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import type { CurrentConditions } from "@/lib/types";
+import { useLiveWeather } from "@/lib/useLiveWeather";
 import WeatherIcon from "./WeatherIcon";
 
 function windDirection(deg: number | null | undefined): string {
@@ -30,28 +31,41 @@ function windDirection(deg: number | null | undefined): string {
 export default function CurrentConditionsPanel() {
   const [data, setData] = useState<CurrentConditions | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const { patch, connected } = useLiveWeather();
 
   const fmt = (val: number | null | undefined, decimals: number) => {
     if (val === null || val === undefined) return "n/a";
     return val.toFixed(decimals);
   };
 
-  const fetchData = useCallback(async () => {
-    try {
-      const res = await fetch("/api/current");
-      if (!res.ok) throw new Error("Failed to fetch");
-      setData(await res.json());
-      setError(null);
-    } catch {
-      setError("Unable to connect to weather station");
-    }
+  // Fetch once on mount; live updates come via MQTT
+  useEffect(() => {
+    fetch("/api/current")
+      .then((r) => {
+        if (!r.ok) throw new Error("Failed to fetch");
+        return r.json();
+      })
+      .then((d) => { setData(d); setError(null); })
+      .catch(() => setError("Unable to connect to weather station"));
+
+    // Ask the WLL to start broadcasting UDP packets for 5 minutes
+    fetch("/api/start-live", { method: "POST" }).catch(() => {});
   }, []);
 
-  useEffect(() => {
-    fetchData();
-    const interval = setInterval(fetchData, 30000);
-    return () => clearInterval(interval);
-  }, [fetchData]);
+  // Merge live MQTT patch (wind + rain) over the HTTP baseline
+  const display = data
+    ? {
+        ...data,
+        wind_speed: patch?.wind_speed ?? data.wind_speed,
+        wind_dir: patch?.wind_dir ?? data.wind_dir,
+        wind_gust: patch?.wind_gust ?? data.wind_gust,
+        rain_rate: patch?.rain_rate ?? data.rain_rate,
+        rain_today: patch?.rain_today ?? data.rain_today,
+        timestamp: patch
+          ? new Date(patch.ts * 1000).toISOString()
+          : data.timestamp,
+      }
+    : null;
 
   if (error) {
     return (
@@ -61,7 +75,7 @@ export default function CurrentConditionsPanel() {
     );
   }
 
-  if (!data) {
+  if (!display) {
     return (
       <div className="bg-slate-800 rounded-lg shadow p-6 animate-pulse">
         <div className="h-8 bg-slate-700 rounded w-1/3 mb-4" />
@@ -75,7 +89,7 @@ export default function CurrentConditionsPanel() {
     );
   }
 
-  const timestamp = new Date(data.timestamp).toLocaleString("en-US", {
+  const timestamp = new Date(display.timestamp).toLocaleString("en-US", {
     month: "short",
     day: "numeric",
     year: "numeric",
@@ -88,8 +102,13 @@ export default function CurrentConditionsPanel() {
     <div className="bg-slate-800 rounded-lg shadow-lg overflow-hidden border border-slate-700">
       {/* Status bar */}
       <div className="bg-slate-950 text-slate-300 px-4 py-2 text-sm flex items-center gap-2 border-b border-slate-700">
-        <span className="inline-block w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-        Connected to weather station live. Data received {timestamp}
+        <span
+          className={`inline-block w-2 h-2 rounded-full animate-pulse ${
+            connected ? "bg-green-400" : "bg-yellow-400"
+          }`}
+        />
+        {connected ? "Live · " : "Last known · "}
+        {timestamp}
       </div>
 
       {/* Main current conditions */}
@@ -97,13 +116,13 @@ export default function CurrentConditionsPanel() {
         <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
           {/* Weather Icon */}
           <div className="bg-slate-700/30 p-4 rounded-full border border-slate-600">
-            <WeatherIcon condition={data.condition} className="w-16 h-16" />
+            <WeatherIcon condition={display.condition} className="w-16 h-16" />
           </div>
 
           {/* Big temperature */}
           <div className="flex items-center gap-4">
             <div className="text-6xl font-light text-slate-100">
-              {fmt(data.temp, 1)}
+              {fmt(display.temp, 1)}
               <span className="text-3xl text-slate-400">°C</span>
             </div>
           </div>
@@ -111,10 +130,10 @@ export default function CurrentConditionsPanel() {
           {/* Condition + feels like */}
           <div>
             <div className="text-xl font-medium text-slate-200">
-              {data.condition}
+              {display.condition}
             </div>
             <div className="text-sm text-slate-400">
-              Feels like: {fmt(data.feels_like, 1)} °C
+              Feels like: {fmt(display.feels_like, 1)} °C
             </div>
           </div>
 
@@ -125,7 +144,7 @@ export default function CurrentConditionsPanel() {
                 High
               </div>
               <div className="text-lg font-medium text-red-400">
-                {fmt(data.high, 1)} °C
+                {fmt(display.high, 1)} °C
               </div>
             </div>
             <div className="text-center">
@@ -133,7 +152,7 @@ export default function CurrentConditionsPanel() {
                 Low
               </div>
               <div className="text-lg font-medium text-blue-400">
-                {fmt(data.low, 1)} °C
+                {fmt(display.low, 1)} °C
               </div>
             </div>
           </div>
@@ -142,45 +161,45 @@ export default function CurrentConditionsPanel() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
           <MetricCard
             label="Wind"
-            value={`${fmt(data.wind_speed, 0)} km/h ${windDirection(data.wind_dir)}`}
-            sub={`Gust: ${fmt(data.wind_gust, 0)} km/h`}
+            value={`${fmt(display.wind_speed, 0)} km/h ${windDirection(display.wind_dir)}`}
+            sub={`Gust: ${fmt(display.wind_gust, 0)} km/h`}
             icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.7 7.7a2.5 2.5 0 1 1 1.8 4.3H2" /><path d="M9.6 4.6A2 2 0 1 1 11 8H2" /><path d="M12.6 19.4A2 2 0 1 0 14 16H2" /></svg>}
           />
           <MetricCard
             label="Barometer"
-            value={`${fmt(data.barometer, 1)} mbar`}
+            value={`${fmt(display.barometer, 1)} mbar`}
             icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><path d="M12 7v5l3 3" /></svg>}
           />
           <MetricCard
             label="Dew Point"
-            value={`${fmt(data.dew_point, 1)} °C`}
+            value={`${fmt(display.dew_point, 1)} °C`}
             icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z" /></svg>}
           />
           <MetricCard 
             label="Humidity" 
-            value={`${fmt(data.humidity, 0)}%`} 
+            value={`${fmt(display.humidity, 0)}%`} 
             icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z" /></svg>}
           />
           <MetricCard
             label="Rain Today"
-            value={`${fmt(data.rain_today, 1)} mm`}
-            sub={`Rate: ${fmt(data.rain_rate, 1)} mm/hr`}
+            value={`${fmt(display.rain_today, 1)} mm`}
+            sub={`Rate: ${fmt(display.rain_rate, 1)} mm/hr`}
             icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242" /><path d="M16 14v6" /><path d="M8 14v6" /><path d="M12 16v6" /></svg>}
           />
           <MetricCard 
             label="Sunrise" 
-            value={data.sunrise} 
+            value={display.sunrise} 
             icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v8" /><path d="m4.93 10.93 1.41-1.41" /><path d="M2 18h2" /><path d="M20 18h2" /><path d="m19.07 10.93-1.41-1.41" /><path d="M22 22H2" /><path d="m8 22 4-4 4 4" /></svg>}
           />
           <MetricCard 
             label="Sunset" 
-            value={data.sunset} 
+            value={display.sunset} 
             icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 10V2" /><path d="m4.93 10.93 1.41-1.41" /><path d="M2 18h2" /><path d="M20 18h2" /><path d="m19.07 10.93-1.41-1.41" /><path d="M22 22H2" /><path d="m16 22-4-4-4 4" /></svg>}
           />
           <MetricCard
             label="Moon"
-            value={data.moon_phase}
-            sub={`${data.moon_visible}% visible`}
+            value={display.moon_phase}
+            sub={`${display.moon_visible}% visible`}
             icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" /></svg>}
           />
         </div>

@@ -23,6 +23,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      mosquitto:
+        condition: service_started
     ports:
       - "8083:3000"
     environment:
@@ -32,6 +34,7 @@ services:
       STATION_LON: ${STATION_LON:-8.79}
       STATION_ALTITUDE: ${STATION_ALTITUDE:-330}
       INGEST_INTERVAL_MS: ${INGEST_INTERVAL_MS:-600000}
+      MQTT_HOST: mosquitto
       # INGEST_SECRET: ${INGEST_SECRET:-}
     dns:
       - "8.8.8.8"
@@ -58,6 +61,24 @@ services:
       - "host.docker.internal:host-gateway"
     entrypoint: ["bun", "run", "lib/import-weewx.ts"]
     restart: "no"
+
+  mosquitto:
+    image: eclipse-mosquitto:2
+    restart: unless-stopped
+    volumes:
+      - ./services/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+    ports:
+      - "1883:1883"
+
+  udp-listener:
+    build: ./services/udp_listener
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      MQTT_HOST: 127.0.0.1
+      STATION_URL: ${STATION_URL:-http://192.168.50.199}
+    depends_on:
+      - mosquitto
 
 volumes:
   pgdata:
