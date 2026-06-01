@@ -92,7 +92,7 @@ jobs:
 
           port="${DROPLET_SSH_PORT:-22}"
           dest="${DROPLET_USER}@${DROPLET_HOST}"
-          path="${DEPLOY_PATH:-/opt/weather_ansessa_com}"
+          path="${DEPLOY_PATH:-/home/root/weather_ansessa_com}"
 
           # Build .env from GitHub environment secrets and variables
           {
@@ -116,6 +116,6 @@ jobs:
 
           port="${DROPLET_SSH_PORT:-22}"
           dest="${DROPLET_USER}@${DROPLET_HOST}"
-          path="${DEPLOY_PATH:-/opt/weather_ansessa_com}"
+          path="${DEPLOY_PATH:-/home/root/weather_ansessa_com}"
 
           ssh -p "$port" "$dest" "cd $path && docker compose pull app && docker compose up -d --remove-orphans app"
