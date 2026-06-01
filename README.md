@@ -78,6 +78,38 @@ docker-compose up -d --build
 
 The app will be available at [http://localhost:8083](http://localhost:8083).
 
+### GitHub Actions Deployment to a DigitalOcean Droplet
+
+A GitHub Actions workflow at `.github/workflows/deploy-droplet.yml` builds the app Docker image, pushes it to GitHub Container Registry (GHCR), then SSHes into the droplet to pull the new image and restart the containers. The workflow runs on every push to `main` and can also be triggered manually.
+
+One-time droplet setup:
+
+1. Install Docker and Docker Compose on the droplet.
+2. Create the deploy directory (default `/opt/weather_ansessa_com`).
+3. Create a `.env` file in that directory with your production values (`OPENAI_API_KEY`, `STATION_URL`, etc.).
+4. Log in to GHCR on the droplet so it can pull images:
+   ```bash
+   # Create a GitHub PAT with read:packages scope, then:
+   echo "YOUR_PAT" | docker login ghcr.io -u YOUR_GITHUB_USER --password-stdin
+   ```
+
+GitHub configuration:
+
+1. Add repository secrets:
+   - `DO_DROPLET_HOST`: droplet IP address or hostname.
+   - `DO_DROPLET_USER`: SSH user used for deployment.
+   - `DO_DROPLET_SSH_KEY`: private SSH key GitHub Actions uses to connect to the droplet.
+2. Optionally add repository variables:
+   - `DO_DEPLOY_PATH`: remote directory. Defaults to `/opt/weather_ansessa_com`.
+   - `DO_DROPLET_SSH_PORT`: SSH port. Defaults to `22`.
+
+Operational notes:
+
+- No git checkout is needed on the droplet. The workflow copies `docker-compose.yml` and config files via SCP, then pulls the pre-built image from GHCR.
+- `data/` (Postgres volume) and `.env` persist on the droplet across deploys.
+- Each deploy is also tagged with the commit SHA (`ghcr.io/sessa93/weather_ansessa_com:<sha>`) for rollback.
+- You can trigger the workflow manually from the GitHub Actions tab with `workflow_dispatch`.
+
 ### Virtual Station Simulator
 
 For testing without the physical Davis station, a WeatherLink-compatible simulator is available as a Compose profile.

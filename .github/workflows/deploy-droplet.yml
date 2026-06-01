@@ -1,0 +1,87 @@
+name: Deploy to DigitalOcean Droplet
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: production-droplet-deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      DROPLET_HOST: ${{ secrets.DO_DROPLET_HOST }}
+      DROPLET_USER: ${{ secrets.DO_DROPLET_USER }}
+      DROPLET_SSH_PORT: ${{ vars.DO_DROPLET_SSH_PORT }}
+      DEPLOY_PATH: ${{ vars.DO_DEPLOY_PATH }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare image name
+        id: image
+        run: echo "name=$(echo "ghcr.io/${{ github.repository }}" | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push app image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ steps.image.outputs.name }}:latest
+            ${{ steps.image.outputs.name }}:${{ github.sha }}
+
+      - name: Configure SSH
+        env:
+          SSH_KEY: ${{ secrets.DO_DROPLET_SSH_KEY }}
+        run: |
+          set -euo pipefail
+
+          : "${DROPLET_HOST:?Missing secret DO_DROPLET_HOST}"
+          : "${DROPLET_USER:?Missing secret DO_DROPLET_USER}"
+          : "${SSH_KEY:?Missing secret DO_DROPLET_SSH_KEY}"
+
+          port="${DROPLET_SSH_PORT:-22}"
+
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -p "$port" -H "$DROPLET_HOST" >> ~/.ssh/known_hosts
+
+      - name: Copy compose and config files
+        run: |
+          set -euo pipefail
+
+          port="${DROPLET_SSH_PORT:-22}"
+          dest="${DROPLET_USER}@${DROPLET_HOST}"
+          path="${DEPLOY_PATH:-/opt/weather_ansessa_com}"
+
+          ssh -p "$port" "$dest" "mkdir -p $path/lib $path/services/mosquitto"
+          scp -P "$port" docker-compose.yml "$dest:$path/docker-compose.yml"
+          scp -P "$port" lib/schema.sql "$dest:$path/lib/schema.sql"
+          scp -P "$port" services/mosquitto/mosquitto.conf "$dest:$path/services/mosquitto/mosquitto.conf"
+
+      - name: Pull new image and restart containers
+        run: |
+          set -euo pipefail
+
+          port="${DROPLET_SSH_PORT:-22}"
+          dest="${DROPLET_USER}@${DROPLET_HOST}"
+          path="${DEPLOY_PATH:-/opt/weather_ansessa_com}"
+
+          ssh -p "$port" "$dest" "cd $path && docker compose pull app && docker compose up -d --remove-orphans app"
