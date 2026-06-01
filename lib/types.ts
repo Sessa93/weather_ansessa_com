@@ -49,7 +49,9 @@ export interface CurrentConditions {
   condition: string;
   icon: string;
   high: number | null;
+  high_recorded_at: string | null;
   low: number | null;
+  low_recorded_at: string | null;
   wind_speed: number | null;
   wind_gust: number | null;
   wind_dir: number | null;

@@ -4,11 +4,23 @@ import { useEffect, useState } from "react";
 
 interface RecordSnapshot {
   high_temp: number | null;
+  high_temp_recorded_at: string | null;
   low_temp: number | null;
+  low_temp_recorded_at: string | null;
   avg_wind: number | null;
   high_wind: number | null;
+  high_wind_recorded_at: string | null;
   total_rain: number | null;
   high_rain_rate: number | null;
+  high_rain_rate_recorded_at: string | null;
+  high_humidity: number | null;
+  high_humidity_recorded_at: string | null;
+  low_humidity: number | null;
+  low_humidity_recorded_at: string | null;
+  high_barometer: number | null;
+  high_barometer_recorded_at: string | null;
+  low_barometer: number | null;
+  low_barometer_recorded_at: string | null;
 }
 
 interface AllTimeEntry {
@@ -31,7 +43,7 @@ function fmt(v: number | null | undefined): string {
 
 function fmtDate(d: string | null | undefined): string {
   if (!d) return "—";
-  return new Date(d).toLocaleDateString("en-US", {
+  return new Date(d).toLocaleString("en-US", {
     month: "short",
     day: "numeric",
     year: "numeric",
@@ -81,7 +93,7 @@ export default function RecordsPage() {
         <RecordRow
           label="Highest Temperature"
           yearVal={`${fmt(data.year?.high_temp)} °C`}
-          yearDate={yearLabel}
+          yearDate={fmtDate(data.year?.high_temp_recorded_at)}
           allTimeVal={
             data.allTime.highest_temp
               ? `${fmt(data.allTime.highest_temp.value)} °C`
@@ -92,7 +104,7 @@ export default function RecordsPage() {
         <RecordRow
           label="Lowest Temperature"
           yearVal={`${fmt(data.year?.low_temp)} °C`}
-          yearDate={yearLabel}
+          yearDate={fmtDate(data.year?.low_temp_recorded_at)}
           allTimeVal={
             data.allTime.lowest_temp
               ? `${fmt(data.allTime.lowest_temp.value)} °C`
@@ -107,7 +119,7 @@ export default function RecordsPage() {
         <RecordRow
           label="Strongest Wind Gust"
           yearVal={`${fmt(data.year?.high_wind)} km/h`}
-          yearDate={yearLabel}
+          yearDate={fmtDate(data.year?.high_wind_recorded_at)}
           allTimeVal={
             data.allTime.highest_wind
               ? `${fmt(data.allTime.highest_wind.value)} km/h`
@@ -122,7 +134,7 @@ export default function RecordsPage() {
         <RecordRow
           label="Highest Daily Rain Rate"
           yearVal={`${fmt(data.year?.high_rain_rate)} mm/hr`}
-          yearDate={yearLabel}
+          yearDate={fmtDate(data.year?.high_rain_rate_recorded_at)}
           allTimeVal={
             data.allTime.highest_rain_rate
               ? `${fmt(data.allTime.highest_rain_rate.value)} mm/hr`
@@ -144,11 +156,9 @@ export default function RecordsPage() {
         <RecordRow
           label="Highest Humidity"
           yearVal={
-            data.allTime.highest_humidity
-              ? `${fmt(data.allTime.highest_humidity.value)}%`
-              : "—"
+            data.year.high_humidity ? `${fmt(data.year.high_humidity)}%` : "—"
           }
-          yearDate={yearLabel}
+          yearDate={fmtDate(data.year.high_humidity_recorded_at)}
           allTimeVal={
             data.allTime.highest_humidity
               ? `${fmt(data.allTime.highest_humidity.value)}%`
@@ -159,11 +169,9 @@ export default function RecordsPage() {
         <RecordRow
           label="Lowest Humidity"
           yearVal={
-            data.allTime.lowest_humidity
-              ? `${fmt(data.allTime.lowest_humidity.value)}%`
-              : "—"
+            data.year.low_humidity ? `${fmt(data.year.low_humidity)}%` : "—"
           }
-          yearDate={yearLabel}
+          yearDate={fmtDate(data.year.low_humidity_recorded_at)}
           allTimeVal={
             data.allTime.lowest_humidity
               ? `${fmt(data.allTime.lowest_humidity.value)}%`
@@ -178,11 +186,11 @@ export default function RecordsPage() {
         <RecordRow
           label="Highest Barometer"
           yearVal={
-            data.allTime.highest_barometer
-              ? `${fmt(data.allTime.highest_barometer.value)} mbar`
+            data.year.high_barometer
+              ? `${fmt(data.year.high_barometer)} mbar`
               : "—"
           }
-          yearDate={yearLabel}
+          yearDate={fmtDate(data.year.high_barometer_recorded_at)}
           allTimeVal={
             data.allTime.highest_barometer
               ? `${fmt(data.allTime.highest_barometer.value)} mbar`
@@ -193,11 +201,11 @@ export default function RecordsPage() {
         <RecordRow
           label="Lowest Barometer"
           yearVal={
-            data.allTime.lowest_barometer
-              ? `${fmt(data.allTime.lowest_barometer.value)} mbar`
+            data.year.low_barometer
+              ? `${fmt(data.year.low_barometer)} mbar`
               : "—"
           }
-          yearDate={yearLabel}
+          yearDate={fmtDate(data.year.low_barometer_recorded_at)}
           allTimeVal={
             data.allTime.lowest_barometer
               ? `${fmt(data.allTime.lowest_barometer.value)} mbar`

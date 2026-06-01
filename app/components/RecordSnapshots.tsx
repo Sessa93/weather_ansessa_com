@@ -4,11 +4,15 @@ import { useEffect, useState } from "react";
 
 interface RecordSnapshot {
   high_temp: number | null;
+  high_temp_recorded_at: string | null;
   low_temp: number | null;
+  low_temp_recorded_at: string | null;
   avg_wind: number | null;
   high_wind: number | null;
+  high_wind_recorded_at: string | null;
   total_rain: number | null;
   high_rain_rate: number | null;
+  high_rain_rate_recorded_at: string | null;
 }
 
 interface RecordsData {
@@ -20,6 +24,17 @@ interface RecordsData {
 function fmt(v: number | null | undefined): string {
   if (v == null) return "—";
   return Number(v).toFixed(1);
+}
+
+function fmtRecordedAt(value: string | null | undefined): string {
+  if (!value) return "—";
+  return new Date(value).toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
 }
 
 export default function RecordSnapshots() {
@@ -158,11 +173,13 @@ function SnapshotCard({
               label="High"
               value={`${fmt(data.high_temp)}°`}
               color="text-red-400"
+              recordedAt={fmtRecordedAt(data.high_temp_recorded_at)}
             />
             <MetricBox
               label="Low"
               value={`${fmt(data.low_temp)}°`}
               color="text-blue-400"
+              recordedAt={fmtRecordedAt(data.low_temp_recorded_at)}
             />
           </div>
         </div>
@@ -196,6 +213,7 @@ function SnapshotCard({
               label="Max Gust"
               value={`${fmt(data.high_wind)}`}
               unit="km/h"
+              recordedAt={fmtRecordedAt(data.high_wind_recorded_at)}
             />
           </div>
         </div>
@@ -230,6 +248,7 @@ function SnapshotCard({
               label="Max Rate"
               value={`${fmt(data.high_rain_rate)}`}
               unit="mm/h"
+              recordedAt={fmtRecordedAt(data.high_rain_rate_recorded_at)}
             />
           </div>
         </div>
@@ -242,11 +261,13 @@ function MetricBox({
   label,
   value,
   unit,
+  recordedAt,
   color = "text-slate-200",
 }: {
   label: string;
   value: string;
   unit?: string;
+  recordedAt?: string;
   color?: string;
 }) {
   return (
@@ -262,6 +283,11 @@ function MetricBox({
           </span>
         )}
       </div>
+      {recordedAt && (
+        <div className="mt-1 text-[10px] leading-tight text-slate-500">
+          Recorded {recordedAt}
+        </div>
+      )}
     </div>
   );
 }

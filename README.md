@@ -24,27 +24,28 @@ A modern weather dashboard for Davis WeatherLink-compatible stations. It feature
 
 Create a `.env.local` file in the root directory and configure the following:
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `DATABASE_URL` | PostgreSQL connection string | `postgresql://postgres:postgres@localhost:5432/weather` |
-| `STATION_URL` | Base URL of the weather station (WeatherLink-compatible API) | `http://localhost:8888` |
-| `OPENAI_API_KEY` | OpenAI API Key for weather summaries | (Required for AI features) |
-| `INGEST_INTERVAL_MS` | Frequency of background data ingestion in milliseconds | `600000` (10 minutes) |
-| `INGEST_SECRET` | Optional bearer token to protect the `/api/ingest` endpoint | - |
-| `STATION_LAT` | Latitude of the station for forecast | `45.71` |
-| `STATION_LON` | Longitude of the station for forecast | `8.79` |
-| `STATION_ALTITUDE` | Altitude of the station in metres | `330` |
-| `MARIADB_HOST` | Host for WeeWX import (MariaDB) | `127.0.0.1` |
-| `MARIADB_PORT` | Port for WeeWX import | `3306` |
-| `MARIADB_USER` | Username for WeeWX import | `weewx` |
-| `MARIADB_PASS` | Password for WeeWX import | `weewx` |
-| `MARIADB_DB` | Database name for WeeWX import | `weewxdb` |
+| Variable             | Description                                                  | Default                                                 |
+| -------------------- | ------------------------------------------------------------ | ------------------------------------------------------- |
+| `DATABASE_URL`       | PostgreSQL connection string                                 | `postgresql://postgres:postgres@localhost:5432/weather` |
+| `STATION_URL`        | Base URL of the weather station (WeatherLink-compatible API) | `http://localhost:8888`                                 |
+| `OPENAI_API_KEY`     | OpenAI API Key for weather summaries                         | (Required for AI features)                              |
+| `INGEST_INTERVAL_MS` | Frequency of background data ingestion in milliseconds       | `600000` (10 minutes)                                   |
+| `INGEST_SECRET`      | Optional bearer token to protect the `/api/ingest` endpoint  | -                                                       |
+| `STATION_LAT`        | Latitude of the station for forecast                         | `45.71`                                                 |
+| `STATION_LON`        | Longitude of the station for forecast                        | `8.79`                                                  |
+| `STATION_ALTITUDE`   | Altitude of the station in metres                            | `330`                                                   |
+| `MARIADB_HOST`       | Host for WeeWX import (MariaDB)                              | `127.0.0.1`                                             |
+| `MARIADB_PORT`       | Port for WeeWX import                                        | `3306`                                                  |
+| `MARIADB_USER`       | Username for WeeWX import                                    | `weewx`                                                 |
+| `MARIADB_PASS`       | Password for WeeWX import                                    | `weewx`                                                 |
+| `MARIADB_DB`         | Database name for WeeWX import                               | `weewxdb`                                               |
 
 ## 🛠 Setup & Run
 
 ### Local Development
 
 1. **Install dependencies**:
+
    ```bash
    npm install
    # or
@@ -55,6 +56,7 @@ Create a `.env.local` file in the root directory and configure the following:
    Ensure PostgreSQL is running and the database exists. You can use the schema provided in `lib/schema.sql`.
 
 3. **Run the development server**:
+
    ```bash
    npm run dev
    # or
@@ -76,16 +78,49 @@ docker-compose up -d --build
 
 The app will be available at [http://localhost:8083](http://localhost:8083).
 
+### Virtual Station Simulator
+
+For testing without the physical Davis station, a WeatherLink-compatible simulator is available as a Compose profile.
+
+```bash
+# Run the full simulator path for local `npm run dev`
+docker compose --profile simulator up -d --build mosquitto udp-listener virtual-station
+
+# Or run the full stack plus the simulator
+docker compose --profile simulator up -d --build postgres mosquitto udp-listener app virtual-station
+```
+
+The simulator exposes the same HTTP surface the app already uses:
+
+- `GET /v1/current_conditions`
+- `GET /v1/real_time?duration=300`
+
+By default it listens on [http://localhost:8888](http://localhost:8888), which matches the existing local `STATION_URL` default. When `/v1/real_time` is called, it also starts sending Davis-style UDP packets to port `22222` so the existing `udp-listener` and MQTT live updates continue to work.
+
+If you only need the HTTP polling surface, you can start just `virtual-station`, but the full command above is what reproduces the real station + live MQTT path.
+
+Optional simulator environment variables:
+
+| Variable                    | Description                                               | Default        |
+| --------------------------- | --------------------------------------------------------- | -------------- |
+| `SIM_STATION_PORT`          | Host port published by the simulator container            | `8888`         |
+| `SIM_UDP_TARGET_HOST`       | Hostname/IP that should receive the simulated UDP packets | `udp-listener` |
+| `SIM_UDP_TARGET_PORT`       | UDP port for the simulated live packets                   | `22222`        |
+| `SIM_BROADCAST_INTERVAL_MS` | Interval between UDP live packets                         | `1000`         |
+| `SIM_SCENARIO`              | Weather pattern: `variable`, `storm`, or `calm`           | `variable`     |
+
+The `udp-listener` service also publishes `22222/udp` on the host, so real Davis broadcasts from your LAN can still be forwarded into the container outside simulator-based testing.
+
 ## 📜 Scripts
 
-| Script | Description |
-|--------|-------------|
-| `npm run dev` | Starts the development server with hot-reloading. |
-| `npm run build` | Builds the application for production. |
-| `npm run start` | Starts the production server. |
-| `npm run lint` | Runs ESLint to check for code quality issues. |
-| `npm run db:seed` | Seeds the database with mock historical data for development. |
-| `npm run db:import-weewx` | Imports historical data from a WeeWX MariaDB database. |
+| Script                    | Description                                                   |
+| ------------------------- | ------------------------------------------------------------- |
+| `npm run dev`             | Starts the development server with hot-reloading.             |
+| `npm run build`           | Builds the application for production.                        |
+| `npm run start`           | Starts the production server.                                 |
+| `npm run lint`            | Runs ESLint to check for code quality issues.                 |
+| `npm run db:seed`         | Seeds the database with mock historical data for development. |
+| `npm run db:import-weewx` | Imports historical data from a WeeWX MariaDB database.        |
 
 ## 📁 Project Structure
 

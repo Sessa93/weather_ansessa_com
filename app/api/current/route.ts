@@ -9,17 +9,38 @@ export async function GET() {
        ORDER BY timestamp DESC LIMIT 1`,
     ),
     pool.query(`
+      WITH today AS (
+        SELECT timestamp, outside_temp, rain
+        FROM weather_readings
+        WHERE timestamp::date = CURRENT_DATE
+      )
       SELECT
         MAX(outside_temp) AS high,
         MIN(outside_temp) AS low,
-        SUM(rain)         AS rain_today
-      FROM weather_readings
-      WHERE timestamp::date = CURRENT_DATE
+        SUM(rain) AS rain_today,
+        (
+          SELECT timestamp
+          FROM today
+          WHERE outside_temp IS NOT NULL
+          ORDER BY outside_temp DESC NULLS LAST, timestamp ASC
+          LIMIT 1
+        ) AS high_recorded_at,
+        (
+          SELECT timestamp
+          FROM today
+          WHERE outside_temp IS NOT NULL
+          ORDER BY outside_temp ASC NULLS LAST, timestamp ASC
+          LIMIT 1
+        ) AS low_recorded_at
+      FROM today
     `),
   ]);
 
   if (latestRes.rows.length === 0) {
-    return NextResponse.json({ error: "No readings available" }, { status: 404 });
+    return NextResponse.json(
+      { error: "No readings available" },
+      { status: 404 },
+    );
   }
 
   const row = latestRes.rows[0];
@@ -35,7 +56,9 @@ export async function GET() {
     condition: getCondition(temp, humidity, rainRate),
     icon: getIcon(temp, humidity, rainRate),
     high: stats.high ?? temp,
+    high_recorded_at: stats.high_recorded_at ?? row.timestamp,
     low: stats.low ?? temp,
+    low_recorded_at: stats.low_recorded_at ?? row.timestamp,
     wind_speed: row.wind_speed,
     wind_gust: row.wind_gust,
     wind_dir: row.wind_dir,
@@ -51,7 +74,11 @@ export async function GET() {
   });
 }
 
-function getCondition(temp: number, humidity: number, rainRate: number): string {
+function getCondition(
+  temp: number,
+  humidity: number,
+  rainRate: number,
+): string {
   if (rainRate > 0) return "Rain";
   if (humidity > 85) return "Mostly Cloudy";
   if (humidity > 70) return "Partly Cloudy";

@@ -38,6 +38,17 @@ export default function CurrentConditionsPanel() {
     return val.toFixed(decimals);
   };
 
+  const fmtRecordedAt = (value: string | null | undefined) => {
+    if (!value) return "Recorded —";
+    return `Recorded ${new Date(value).toLocaleString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    })}`;
+  };
+
   // Fetch once on mount; live updates come via MQTT
   useEffect(() => {
     fetch("/api/current")
@@ -45,7 +56,10 @@ export default function CurrentConditionsPanel() {
         if (!r.ok) throw new Error("Failed to fetch");
         return r.json();
       })
-      .then((d) => { setData(d); setError(null); })
+      .then((d) => {
+        setData(d);
+        setError(null);
+      })
       .catch(() => setError("Unable to connect to weather station"));
 
     // Ask the WLL to start broadcasting UDP packets for 5 minutes
@@ -146,6 +160,9 @@ export default function CurrentConditionsPanel() {
               <div className="text-lg font-medium text-red-400">
                 {fmt(display.high, 1)} °C
               </div>
+              <div className="mt-1 text-[10px] leading-tight text-slate-500">
+                {fmtRecordedAt(display.high_recorded_at)}
+              </div>
             </div>
             <div className="text-center">
               <div className="text-xs text-slate-400 uppercase font-semibold">
@@ -153,6 +170,9 @@ export default function CurrentConditionsPanel() {
               </div>
               <div className="text-lg font-medium text-blue-400">
                 {fmt(display.low, 1)} °C
+              </div>
+              <div className="mt-1 text-[10px] leading-tight text-slate-500">
+                {fmtRecordedAt(display.low_recorded_at)}
               </div>
             </div>
           </div>
@@ -163,44 +183,166 @@ export default function CurrentConditionsPanel() {
             label="Wind"
             value={`${fmt(display.wind_speed, 0)} km/h ${windDirection(display.wind_dir)}`}
             sub={`Gust: ${fmt(display.wind_gust, 0)} km/h`}
-            icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.7 7.7a2.5 2.5 0 1 1 1.8 4.3H2" /><path d="M9.6 4.6A2 2 0 1 1 11 8H2" /><path d="M12.6 19.4A2 2 0 1 0 14 16H2" /></svg>}
+            icon={
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M17.7 7.7a2.5 2.5 0 1 1 1.8 4.3H2" />
+                <path d="M9.6 4.6A2 2 0 1 1 11 8H2" />
+                <path d="M12.6 19.4A2 2 0 1 0 14 16H2" />
+              </svg>
+            }
           />
           <MetricCard
             label="Barometer"
             value={`${fmt(display.barometer, 1)} mbar`}
-            icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><path d="M12 7v5l3 3" /></svg>}
+            icon={
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="12" cy="12" r="10" />
+                <path d="M12 7v5l3 3" />
+              </svg>
+            }
           />
           <MetricCard
             label="Dew Point"
             value={`${fmt(display.dew_point, 1)} °C`}
-            icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z" /></svg>}
+            icon={
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z" />
+              </svg>
+            }
           />
-          <MetricCard 
-            label="Humidity" 
-            value={`${fmt(display.humidity, 0)}%`} 
-            icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z" /></svg>}
+          <MetricCard
+            label="Humidity"
+            value={`${fmt(display.humidity, 0)}%`}
+            icon={
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z" />
+              </svg>
+            }
           />
           <MetricCard
             label="Rain Today"
             value={`${fmt(display.rain_today, 1)} mm`}
             sub={`Rate: ${fmt(display.rain_rate, 1)} mm/hr`}
-            icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242" /><path d="M16 14v6" /><path d="M8 14v6" /><path d="M12 16v6" /></svg>}
+            icon={
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242" />
+                <path d="M16 14v6" />
+                <path d="M8 14v6" />
+                <path d="M12 16v6" />
+              </svg>
+            }
           />
-          <MetricCard 
-            label="Sunrise" 
-            value={display.sunrise} 
-            icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v8" /><path d="m4.93 10.93 1.41-1.41" /><path d="M2 18h2" /><path d="M20 18h2" /><path d="m19.07 10.93-1.41-1.41" /><path d="M22 22H2" /><path d="m8 22 4-4 4 4" /></svg>}
+          <MetricCard
+            label="Sunrise"
+            value={display.sunrise}
+            icon={
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M12 2v8" />
+                <path d="m4.93 10.93 1.41-1.41" />
+                <path d="M2 18h2" />
+                <path d="M20 18h2" />
+                <path d="m19.07 10.93-1.41-1.41" />
+                <path d="M22 22H2" />
+                <path d="m8 22 4-4 4 4" />
+              </svg>
+            }
           />
-          <MetricCard 
-            label="Sunset" 
-            value={display.sunset} 
-            icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 10V2" /><path d="m4.93 10.93 1.41-1.41" /><path d="M2 18h2" /><path d="M20 18h2" /><path d="m19.07 10.93-1.41-1.41" /><path d="M22 22H2" /><path d="m16 22-4-4-4 4" /></svg>}
+          <MetricCard
+            label="Sunset"
+            value={display.sunset}
+            icon={
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M12 10V2" />
+                <path d="m4.93 10.93 1.41-1.41" />
+                <path d="M2 18h2" />
+                <path d="M20 18h2" />
+                <path d="m19.07 10.93-1.41-1.41" />
+                <path d="M22 22H2" />
+                <path d="m16 22-4-4-4 4" />
+              </svg>
+            }
           />
           <MetricCard
             label="Moon"
             value={display.moon_phase}
             sub={`${display.moon_visible}% visible`}
-            icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" /></svg>}
+            icon={
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
+              </svg>
+            }
           />
         </div>
       </div>

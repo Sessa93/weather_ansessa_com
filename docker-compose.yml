@@ -70,15 +70,35 @@ services:
     ports:
       - "1883:1883"
 
+  virtual-station:
+    build: ./services/virtual_station
+    profiles: ["simulator"]
+    restart: unless-stopped
+    environment:
+      PORT: 8888
+      SIM_STATION_ALTITUDE: ${STATION_ALTITUDE:-330}
+      SIM_UDP_TARGET_HOST: ${SIM_UDP_TARGET_HOST:-udp-listener}
+      SIM_UDP_TARGET_PORT: ${SIM_UDP_TARGET_PORT:-22222}
+      SIM_BROADCAST_INTERVAL_MS: ${SIM_BROADCAST_INTERVAL_MS:-2500}
+      SIM_SCENARIO: ${SIM_SCENARIO:-variable}
+    ports:
+      - "${SIM_STATION_PORT:-8888}:8888"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8888/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
   udp-listener:
     build: ./services/udp_listener
     restart: unless-stopped
-    network_mode: host
     environment:
-      MQTT_HOST: 127.0.0.1
-      STATION_URL: ${STATION_URL:-http://192.168.50.199}
+      MQTT_HOST: mosquitto
+      MQTT_PORT: 1883
     depends_on:
       - mosquitto
+    ports:
+      - "22222:22222/udp"
 
 volumes:
   pgdata:
