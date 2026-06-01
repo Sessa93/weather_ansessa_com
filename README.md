@@ -99,7 +99,7 @@ GitHub configuration (all scoped to the `production` environment):
    - `DO_DROPLET_USER`: SSH user used for deployment.
    - `DO_DROPLET_SSH_KEY`: private SSH key GitHub Actions uses to connect to the droplet.
    - `OPENAI_API_KEY`: OpenAI API key for weather summaries.
-   - `INGEST_SECRET` *(optional)*: bearer token to protect `/api/ingest`.
+   - `INGEST_SECRET` _(optional)_: bearer token to protect `/api/ingest`.
 2. Add **environment variables**:
    - `STATION_URL`: base URL of the weather station.
    - `STATION_LAT`: station latitude (default `45.71`).
@@ -107,8 +107,8 @@ GitHub configuration (all scoped to the `production` environment):
    - `STATION_ALTITUDE`: station altitude in metres (default `330`).
    - `INGEST_INTERVAL_MS`: ingestion frequency in ms (default `600000`).
    - `OPENAI_MODEL`: model name (default `gpt-4o-mini`).
-   - `DO_DEPLOY_PATH` *(optional)*: remote directory (default `/opt/weather_ansessa_com`).
-   - `DO_DROPLET_SSH_PORT` *(optional)*: SSH port (default `22`).
+   - `DO_DEPLOY_PATH` _(optional)_: remote directory (default `/opt/weather_ansessa_com`).
+   - `DO_DROPLET_SSH_PORT` _(optional)_: SSH port (default `22`).
 
 Operational notes:
 

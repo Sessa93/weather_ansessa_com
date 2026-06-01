@@ -70,7 +70,7 @@ jobs:
 
           port="${DROPLET_SSH_PORT:-22}"
           dest="${DROPLET_USER}@${DROPLET_HOST}"
-          path="${DEPLOY_PATH:-/opt/weather_ansessa_com}"
+          path="${DEPLOY_PATH:-/home/root/weather_ansessa_com}"
 
           ssh -p "$port" "$dest" "mkdir -p $path/lib $path/services/mosquitto"
           scp -P "$port" docker-compose.yml "$dest:$path/docker-compose.yml"
