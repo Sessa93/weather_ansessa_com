@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { CurrentConditions } from "@/lib/types";
 import { useLiveWeather } from "@/lib/useLiveWeather";
 import WeatherIcon from "./WeatherIcon";
@@ -370,6 +370,16 @@ function WindCompass({
   gust: number | null | undefined;
 }) {
   const hasDir = dir !== null && dir !== undefined;
+  const prevAngle = useRef(dir ?? 0);
+
+  // Compute the shortest-path rotation so the arrow never spins the long way
+  if (hasDir) {
+    let delta = (dir - prevAngle.current) % 360;
+    if (delta > 180) delta -= 360;
+    if (delta < -180) delta += 360;
+    prevAngle.current += delta;
+  }
+
   const size = 80;
   const cx = size / 2;
   const cy = size / 2;
@@ -433,7 +443,14 @@ function WindCompass({
       })}
       {/* direction arrow */}
       {hasDir && (
-        <g transform={`rotate(${dir}, ${cx}, ${cy})`}>
+        <g
+          style={{
+            transform: `rotate(${prevAngle.current}deg)`,
+            transformOrigin: `${cx}px ${cy}px`,
+            transition: "transform 0.6s cubic-bezier(0.4, 0, 0.2, 1)",
+          }}
+        >
+          {" "}
           <line
             x1={cx}
             y1={cy + 12}
@@ -480,12 +497,12 @@ function MetricCard({
 }) {
   return (
     <div className="bg-slate-700/50 rounded-lg p-3 flex items-start gap-3">
-      {icon && <div className="mt-1 text-slate-400">{icon}</div>}
-      <div className="flex-1 min-w-0">
+      {icon && <div className="mt-1 text-slate-400 shrink-0">{icon}</div>}
+      <div className="flex-1">
         <div className="text-xs text-slate-400 uppercase font-semibold mb-1">
           {label}
         </div>
-        <div className="text-base font-medium text-slate-100 truncate">
+        <div className="text-base font-medium text-slate-100 break-words">
           {value}
         </div>
         {sub && <div className="text-xs text-slate-500 mt-0.5">{sub}</div>}
