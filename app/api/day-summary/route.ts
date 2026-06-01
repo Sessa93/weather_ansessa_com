@@ -4,6 +4,9 @@ import { getRequestLocale } from "@/lib/server-locale";
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
 
+const CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours
+const cache = new Map<string, { summary: string; ts: number }>();
+
 export async function GET() {
   const locale = await getRequestLocale();
   const messages = getMessages(locale);
@@ -15,14 +18,10 @@ export async function GET() {
     );
   }
 
-  // Check cache (6h TTL)
-  const { rows: cached } = await pool.query(
-    `SELECT summary FROM day_summary_cache
-     WHERE locale = $1 AND created_at > NOW() - INTERVAL '6 hours'`,
-    [locale],
-  );
-  if (cached.length > 0) {
-    return NextResponse.json({ summary: cached[0].summary });
+  // Check in-memory cache (6h TTL)
+  const hit = cache.get(locale);
+  if (hit && Date.now() - hit.ts < CACHE_TTL_MS) {
+    return NextResponse.json({ summary: hit.summary });
   }
 
   // Gather today's stats
@@ -120,13 +119,7 @@ Use the barometric pressure trend, humidity levels, temperature patterns, and an
     completion.choices[0]?.message?.content?.trim() ??
     messages.daySummary.unable;
 
-  // Cache the summary (upsert per locale)
-  await pool.query(
-    `INSERT INTO day_summary_cache (locale, summary, created_at)
-     VALUES ($1, $2, NOW())
-     ON CONFLICT (locale) DO UPDATE SET summary = $2, created_at = NOW()`,
-    [locale, summary],
-  );
+  cache.set(locale, { summary, ts: Date.now() });
 
   return NextResponse.json({ summary });
 }

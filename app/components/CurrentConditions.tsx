@@ -188,27 +188,28 @@ export default function CurrentConditionsPanel() {
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
-          <MetricCard
-            label={messages.current.wind}
-            value={`${fmt(display.wind_speed, 0)} km/h ${windDirection(display.wind_dir)}`}
-            sub={`${messages.current.gust}: ${fmt(display.wind_gust, 0)} km/h`}
-            icon={
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M17.7 7.7a2.5 2.5 0 1 1 1.8 4.3H2" />
-                <path d="M9.6 4.6A2 2 0 1 1 11 8H2" />
-                <path d="M12.6 19.4A2 2 0 1 0 14 16H2" />
-              </svg>
-            }
-          />
+          {/* Wind compass – spans 2 columns */}
+          <div className="col-span-2 bg-slate-700/50 rounded-lg p-3 flex items-center gap-4">
+            <WindCompass
+              dir={display.wind_dir}
+              speed={display.wind_speed}
+              gust={display.wind_gust}
+            />
+            <div className="flex-1 min-w-0">
+              <div className="text-xs text-slate-400 uppercase font-semibold mb-1">
+                {messages.current.wind}
+              </div>
+              <div className="text-base font-medium text-slate-100">
+                {fmt(display.wind_speed, 0)} km/h{" "}
+                <span className="text-slate-400">
+                  {windDirection(display.wind_dir)}
+                </span>
+              </div>
+              <div className="text-xs text-slate-500 mt-0.5">
+                {messages.current.gust}: {fmt(display.wind_gust, 0)} km/h
+              </div>
+            </div>
+          </div>
           <MetricCard
             label={messages.current.barometer}
             value={`${fmt(display.barometer, 1)} mbar`}
@@ -356,6 +357,113 @@ export default function CurrentConditionsPanel() {
         </div>
       </div>
     </div>
+  );
+}
+
+function WindCompass({
+  dir,
+  speed,
+  gust,
+}: {
+  dir: number | null | undefined;
+  speed: number | null | undefined;
+  gust: number | null | undefined;
+}) {
+  const hasDir = dir !== null && dir !== undefined;
+  const size = 80;
+  const cx = size / 2;
+  const cy = size / 2;
+  const r = 34;
+  const labels: [string, number][] = [
+    ["N", 0],
+    ["E", 90],
+    ["S", 180],
+    ["W", 270],
+  ];
+
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox={`0 0 ${size} ${size}`}
+      className="shrink-0"
+    >
+      {/* outer ring */}
+      <circle
+        cx={cx}
+        cy={cy}
+        r={r}
+        fill="none"
+        stroke="#475569"
+        strokeWidth="1"
+      />
+      {/* tick marks for 16 directions */}
+      {Array.from({ length: 16 }).map((_, i) => {
+        const angle = (i * 22.5 - 90) * (Math.PI / 180);
+        const isMajor = i % 4 === 0;
+        const inner = isMajor ? r - 6 : r - 4;
+        return (
+          <line
+            key={i}
+            x1={cx + inner * Math.cos(angle)}
+            y1={cy + inner * Math.sin(angle)}
+            x2={cx + r * Math.cos(angle)}
+            y2={cy + r * Math.sin(angle)}
+            stroke={isMajor ? "#94a3b8" : "#64748b"}
+            strokeWidth={isMajor ? 1.5 : 0.75}
+          />
+        );
+      })}
+      {/* N / E / S / W labels */}
+      {labels.map(([label, deg]) => {
+        const angle = (deg - 90) * (Math.PI / 180);
+        const lr = r + 7;
+        return (
+          <text
+            key={label}
+            x={cx + lr * Math.cos(angle)}
+            y={cy + lr * Math.sin(angle)}
+            textAnchor="middle"
+            dominantBaseline="central"
+            className="fill-slate-400 text-[8px] font-semibold"
+          >
+            {label}
+          </text>
+        );
+      })}
+      {/* direction arrow */}
+      {hasDir && (
+        <g transform={`rotate(${dir}, ${cx}, ${cy})`}>
+          <line
+            x1={cx}
+            y1={cy + 12}
+            x2={cx}
+            y2={cy - r + 8}
+            stroke="#38bdf8"
+            strokeWidth="2"
+            strokeLinecap="round"
+          />
+          <polygon
+            points={`${cx},${cy - r + 4} ${cx - 4},${cy - r + 12} ${cx + 4},${cy - r + 12}`}
+            fill="#38bdf8"
+          />
+          {/* tail */}
+          <circle cx={cx} cy={cy} r="3" fill="#38bdf8" opacity="0.6" />
+        </g>
+      )}
+      {/* calm / no data indicator */}
+      {!hasDir && (
+        <text
+          x={cx}
+          y={cy}
+          textAnchor="middle"
+          dominantBaseline="central"
+          className="fill-slate-500 text-[10px]"
+        >
+          —
+        </text>
+      )}
+    </svg>
   );
 }
 
