@@ -5,6 +5,7 @@ import {
   TemperatureChart,
   RainChart,
   BarometerChart,
+  HumidityChart,
   MonthlyRainChart,
 } from "./WeatherCharts";
 import WindRose from "./WindRose";
@@ -60,6 +61,9 @@ export default function HomeCharts({
       <WindRose data={readings} />
       <RainChart data={readings} />
       <BarometerChart data={readings} />
+      <div className="md:col-span-2">
+        <HumidityChart data={readings} />
+      </div>
       {monthlyRain && monthlyRain.length > 0 && (
         <MonthlyRainChart data={monthlyRain} />
       )}

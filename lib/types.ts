@@ -1,5 +1,14 @@
+export interface Station {
+  id: string;
+  name: string;
+  latitude: number | null;
+  longitude: number | null;
+  elevation_m: number | null;
+}
+
 export interface WeatherReading {
   id: number;
+  station_id: string;
   timestamp: string;
   outside_temp: number | null;
   feels_like: number | null;

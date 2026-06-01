@@ -5,6 +5,7 @@ import {
   TemperatureChart,
   RainChart,
   BarometerChart,
+  HumidityChart,
 } from "../components/WeatherCharts";
 import WindRose from "../components/WindRose";
 import { useLocale } from "../components/LocaleProvider";
@@ -30,6 +31,8 @@ export default function GraphsPage() {
   const { messages } = useLocale();
   const [range, setRange] = useState<Range>("day");
   const [readings, setReadings] = useState<Reading[]>([]);
+  const [compareData, setCompareData] = useState<Reading[]>([]);
+  const [showCompare, setShowCompare] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const ranges: { value: Range; label: string }[] = [
@@ -49,6 +52,17 @@ export default function GraphsPage() {
       .catch(() => setLoading(false));
   }, [range]);
 
+  useEffect(() => {
+    if (!showCompare) {
+      setCompareData([]);
+      return;
+    }
+    fetch(`/api/readings-compare?range=${range}`)
+      .then((r) => r.json())
+      .then(setCompareData)
+      .catch(() => setCompareData([]));
+  }, [range, showCompare]);
+
   const long = range !== "day";
 
   return (
@@ -57,8 +71,8 @@ export default function GraphsPage() {
         {messages.graphs.title}
       </h1>
 
-      {/* Range selector */}
-      <div className="flex gap-1">
+      {/* Range selector + export buttons */}
+      <div className="flex gap-1 flex-wrap items-center">
         {ranges.map((r) => (
           <button
             key={r.value}
@@ -75,6 +89,32 @@ export default function GraphsPage() {
             {r.label}
           </button>
         ))}
+        <div className="ml-auto flex gap-1">
+          <button
+            onClick={() => setShowCompare(!showCompare)}
+            className={`px-3 py-2 text-sm font-medium rounded transition-colors ${
+              showCompare
+                ? "bg-amber-600 text-white"
+                : "bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200 border border-slate-700"
+            }`}
+          >
+            {messages.graphs.compareLastYear}
+          </button>
+          <a
+            href={`/api/export?range=${range}&format=csv`}
+            download
+            className="px-3 py-2 text-sm font-medium rounded bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200 border border-slate-700 transition-colors"
+          >
+            {messages.graphs.exportCSV}
+          </a>
+          <a
+            href={`/api/export?range=${range}&format=json`}
+            download
+            className="px-3 py-2 text-sm font-medium rounded bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200 border border-slate-700 transition-colors"
+          >
+            {messages.graphs.exportJSON}
+          </a>
+        </div>
       </div>
 
       {loading ? (
@@ -91,10 +131,17 @@ export default function GraphsPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <TemperatureChart data={readings} long={long} />
+          <TemperatureChart
+            data={readings}
+            long={long}
+            compareData={showCompare ? compareData : undefined}
+          />
           <WindRose data={readings} />
           <RainChart data={readings} long={long} />
           <BarometerChart data={readings} long={long} />
+          <div className="md:col-span-2">
+            <HumidityChart data={readings} long={long} />
+          </div>
         </div>
       )}
     </div>

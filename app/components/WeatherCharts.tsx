@@ -59,20 +59,32 @@ function formatDate(label: ReactNode, intlLocale: string) {
 export function TemperatureChart({
   data,
   long,
+  compareData,
 }: {
   data: Reading[];
   long?: boolean;
+  compareData?: Reading[];
 }) {
   const { intlLocale, messages } = useLocale();
   const fmt = (label: ReactNode) =>
     long ? formatDate(label, intlLocale) : formatTime(label, intlLocale);
+
+  // Merge comparison data as prev_year_temp keyed by closest timestamp
+  const chartData = data.map((d, i) => {
+    const compare = compareData && compareData[i];
+    return {
+      ...d,
+      prev_year_temp: compare?.outside_temp ?? null,
+    };
+  });
+
   return (
     <div className="bg-slate-800 rounded-lg shadow-lg border border-slate-700 p-4 flex flex-col">
       <h3 className="text-sm font-semibold text-slate-300 mb-2">
         {messages.charts.temperature}
       </h3>
       <ResponsiveContainer width="100%" className="flex-1" minHeight={260}>
-        <LineChart data={data}>
+        <LineChart data={chartData}>
           <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
           <XAxis
             dataKey="timestamp"
@@ -137,6 +149,18 @@ export function TemperatureChart({
             strokeDasharray="4 2"
             connectNulls
           />
+          {compareData && compareData.length > 0 && (
+            <Line
+              type="monotone"
+              dataKey="prev_year_temp"
+              name={messages.charts.lastYear}
+              stroke="#facc15"
+              dot={false}
+              strokeWidth={1.5}
+              strokeDasharray="6 3"
+              connectNulls
+            />
+          )}
         </LineChart>
       </ResponsiveContainer>
     </div>
@@ -329,6 +353,62 @@ export function BarometerChart({
             name={messages.charts.barometer}
             stroke="#818cf8"
             fill="#312e81"
+            fillOpacity={0.4}
+            strokeWidth={2}
+            connectNulls
+          />
+        </AreaChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+export function HumidityChart({
+  data,
+  long,
+}: {
+  data: Reading[];
+  long?: boolean;
+}) {
+  const { intlLocale, messages } = useLocale();
+  const fmt = (label: ReactNode) =>
+    long ? formatDate(label, intlLocale) : formatTime(label, intlLocale);
+  return (
+    <div className="bg-slate-800 rounded-lg shadow-lg border border-slate-700 p-4">
+      <h3 className="text-sm font-semibold text-slate-300 mb-2">
+        {messages.charts.humidity}
+      </h3>
+      <ResponsiveContainer width="100%" height={260}>
+        <AreaChart data={data}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+          <XAxis
+            dataKey="timestamp"
+            tickFormatter={fmt}
+            tick={{ fontSize: 11, fill: "#94a3b8" }}
+            interval="preserveStartEnd"
+            stroke="#475569"
+          />
+          <YAxis
+            unit="%"
+            domain={[0, 100]}
+            tick={{ fontSize: 11, fill: "#94a3b8" }}
+            stroke="#475569"
+          />
+          <Tooltip
+            labelFormatter={fmt}
+            contentStyle={{
+              backgroundColor: "#1e293b",
+              border: "1px solid #334155",
+              borderRadius: 8,
+              color: "#e2e8f0",
+            }}
+          />
+          <Area
+            type="monotone"
+            dataKey="humidity"
+            name={messages.charts.humidity}
+            stroke="#06b6d4"
+            fill="#164e63"
             fillOpacity={0.4}
             strokeWidth={2}
             connectNulls

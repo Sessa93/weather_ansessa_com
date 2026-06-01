@@ -1,6 +1,23 @@
 # Weather Station Dashboard
 
-A modern weather dashboard for Davis WeatherLink-compatible stations. It features real-time monitoring, historical data visualization, and automated data ingestion.
+A modern weather dashboard for Davis WeatherLink-compatible stations. It features real-time monitoring, historical data visualization, weather alerts, and automated data ingestion.
+
+## ✨ Features
+
+- **Real-time conditions** — live temperature, humidity, wind compass, barometer with 3-hour pressure trend sparkline
+- **Weather alerts** — threshold-based banners for extreme heat, freezing, high wind, heavy rain, and low pressure
+- **Interactive charts** — temperature, wind, rain, barometer, humidity, and wind rose with day/week/month/year ranges
+- **Historical comparison** — overlay last year's temperature data on the current chart
+- **Heatmap calendar** — GitHub-style year-at-a-glance view for temperature, rain, or humidity
+- **Lightning tracker** — nearby strike detection via Blitzortung with mini radar visualization
+- **Data export** — download readings as CSV or JSON for any time range
+- **AI weather summaries** — GPT-powered daily summaries with in-memory caching
+- **7-day forecast** — Open-Meteo integration with localized conditions
+- **PWA support** — installable as a mobile/desktop app with offline caching
+- **Dynamic OG images** — auto-generated social share cards with current conditions
+- **Localization** — full Italian and English support (i18n)
+- **Multi-station ready** — schema supports multiple stations with per-station data isolation
+- **CI/CD** — GitHub Actions builds and deploys to a DigitalOcean droplet via GHCR
 
 ## 🚀 Tech Stack
 
@@ -164,24 +181,60 @@ The `udp-listener` service also publishes `22222/udp` on the host, so real Davis
 ## 📁 Project Structure
 
 ```text
-├── app/                # Next.js App Router (pages and API)
-│   ├── api/            # API endpoints (ingest, current, records, etc.)
-│   ├── components/     # Reusable React components
-│   ├── graphs/         # Visualizations and charts
-│   ├── records/        # Historical records and climatology
-│   ├── about/          # Project information page
-│   └── page.tsx        # Main dashboard
-├── data/               # Persistent PostgreSQL data (Docker volume)
-├── lib/                # Shared utilities and server-side logic
-│   ├── db.ts           # PostgreSQL client
-│   ├── ingest.ts       # Logic for fetching and storing station data
-│   ├── schema.sql      # Database schema definitions
-│   ├── station.ts      # Weather station API client
-│   └── ...
-├── public/             # Static assets (images, icons)
-├── instrumentation.ts  # Background worker for periodic data ingestion
-├── Dockerfile          # Multi-stage build for production
-└── docker-compose.yml  # Orchestration for app and database
+├── app/                    # Next.js App Router (pages and API)
+│   ├── api/                # API endpoints
+│   │   ├── alerts/         # Threshold-based weather alerts
+│   │   ├── climatology/    # Monthly climate normals
+│   │   ├── current/        # Current conditions
+│   │   ├── day-summary/    # GPT-powered daily summary
+│   │   ├── export/         # CSV/JSON data export
+│   │   ├── forecast/       # 7-day Open-Meteo forecast
+│   │   ├── heatmap/        # Daily aggregates for heatmap
+│   │   ├── ingest/         # Weather station data ingestion
+│   │   ├── lightning/      # Blitzortung lightning proxy
+│   │   ├── live/           # WebSocket live readings
+│   │   ├── pressure-trend/ # 3-hour barometer history
+│   │   ├── rain-by-month/  # Monthly rain totals
+│   │   ├── readings/       # Historical readings
+│   │   ├── readings-compare/ # Same period last year
+│   │   ├── records/        # All-time and daily records
+│   │   ├── start-live/     # Start live MQTT bridge
+│   │   └── stations/       # Station registry
+│   ├── components/         # React components
+│   │   ├── ClimatologyChart.tsx
+│   │   ├── CurrentConditions.tsx
+│   │   ├── DaySummary.tsx
+│   │   ├── Forecast.tsx
+│   │   ├── HeatmapCalendar.tsx
+│   │   ├── HomeCharts.tsx
+│   │   ├── LightningTracker.tsx
+│   │   ├── MonthlyRainChart.tsx
+│   │   ├── RecordSnapshots.tsx
+│   │   ├── WeatherAlerts.tsx
+│   │   ├── WeatherCharts.tsx
+│   │   ├── WindRose.tsx
+│   │   └── WindyRadar.tsx
+│   ├── graphs/             # Charts page with export & compare
+│   ├── records/            # Records & climatology page
+│   ├── about/              # About page
+│   └── page.tsx            # Main dashboard
+├── lib/                    # Shared utilities and server-side logic
+│   ├── db.ts               # PostgreSQL client
+│   ├── i18n.ts             # Localization (IT/EN)
+│   ├── ingest.ts           # Station data ingestion logic
+│   ├── schema.sql          # Database schema
+│   ├── station.ts          # WeatherLink API client
+│   ├── types.ts            # TypeScript interfaces
+│   └── migrations/         # SQL migrations
+├── public/                 # Static assets
+│   ├── manifest.json       # PWA manifest
+│   └── sw.js               # Service worker
+├── services/               # Sidecar services
+│   ├── mosquitto/          # MQTT broker config
+│   └── udp_listener/       # Rust UDP→MQTT bridge
+├── instrumentation.ts      # Background ingestion worker
+├── Dockerfile              # Multi-stage production build
+└── docker-compose.yml      # Full stack orchestration
 ```
 
 ## 🧪 Tests

@@ -34,6 +34,9 @@ export default function CurrentConditionsPanel() {
   const { locale, intlLocale, messages } = useLocale();
   const [data, setData] = useState<CurrentConditions | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [pressureTrend, setPressureTrend] = useState<
+    { timestamp: string; barometer: number }[]
+  >([]);
   const { patch, connected } = useLiveWeather();
   const connectionError = messages.current.connectionError;
 
@@ -71,6 +74,12 @@ export default function CurrentConditionsPanel() {
 
     // Ask the WLL to start broadcasting UDP packets for 5 minutes
     fetch("/api/start-live", { method: "POST" }).catch(() => {});
+
+    // Fetch pressure trend for sparkline
+    fetch("/api/pressure-trend")
+      .then((r) => r.json())
+      .then((d) => setPressureTrend(d))
+      .catch(() => {});
   }, [connectionError]);
 
   // Merge live MQTT patch (wind + rain) over the HTTP baseline
@@ -213,6 +222,7 @@ export default function CurrentConditionsPanel() {
           <MetricCard
             label={messages.current.barometer}
             value={`${fmt(display.barometer, 1)} mbar`}
+            sub={<PressureSparkline data={pressureTrend} />}
             icon={
               <svg
                 width="16"
@@ -484,6 +494,62 @@ function WindCompass({
   );
 }
 
+function PressureSparkline({
+  data,
+}: {
+  data: { timestamp: string; barometer: number }[];
+}) {
+  if (data.length < 2) return null;
+
+  const values = data.map((d) => d.barometer);
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const range = max - min || 1;
+  const h = 18;
+  const pad = 1;
+
+  const diff = values[values.length - 1] - values[0];
+  const trendColor =
+    diff > 0.5 ? "#34d399" : diff < -0.5 ? "#f87171" : "#94a3b8";
+  const trendArrow = diff > 0.5 ? "↑" : diff < -0.5 ? "↓" : "→";
+
+  // Build points using viewBox-relative coordinates (0-100 x range)
+  const points = values
+    .map((v, i) => {
+      const x = pad + (i / (values.length - 1)) * (100 - 2 * pad);
+      const y = h - pad - ((v - min) / range) * (h - 2 * pad);
+      return `${x},${y}`;
+    })
+    .join(" ");
+
+  return (
+    <div className="flex items-center gap-1.5 mt-0.5">
+      <svg
+        viewBox={`0 0 100 ${h}`}
+        preserveAspectRatio="none"
+        className="flex-1 h-[18px] min-w-0"
+      >
+        <polyline
+          points={points}
+          fill="none"
+          stroke={trendColor}
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          vectorEffect="non-scaling-stroke"
+        />
+      </svg>
+      <span
+        style={{ color: trendColor }}
+        className="text-xs font-medium whitespace-nowrap shrink-0"
+      >
+        {trendArrow} {diff > 0 ? "+" : ""}
+        {diff.toFixed(1)}
+      </span>
+    </div>
+  );
+}
+
 function MetricCard({
   label,
   value,
@@ -492,7 +558,7 @@ function MetricCard({
 }: {
   label: string;
   value: string;
-  sub?: string;
+  sub?: React.ReactNode;
   icon?: React.ReactNode;
 }) {
   return (

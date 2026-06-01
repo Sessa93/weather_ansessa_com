@@ -1,9 +1,23 @@
 import pool from "@/lib/db";
 import { NextRequest, NextResponse } from "next/server";
 
+// Check once whether station_id column exists (migration may not have run yet)
+let _hasStationId: boolean | null = null;
+async function hasStationId(): Promise<boolean> {
+  if (_hasStationId !== null) return _hasStationId;
+  const { rows } = await pool.query(
+    `SELECT 1 FROM information_schema.columns
+     WHERE table_name = 'weather_readings' AND column_name = 'station_id' LIMIT 1`,
+  );
+  _hasStationId = rows.length > 0;
+  return _hasStationId;
+}
+
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const range = searchParams.get("range") ?? "day";
+  const stationId = searchParams.get("station") ?? "jerago";
+  const useStation = await hasStationId();
 
   let interval: string;
   let bucket: string | null = null;
@@ -26,8 +40,6 @@ export async function GET(request: NextRequest) {
   }
 
   if (bucket) {
-    // Downsample: average values per time bucket for large ranges
-    // Use date_trunc for clean bucket boundaries
     const truncUnit =
       bucket === "1 day" ? "day" : bucket === "1 hour" ? "hour" : null;
 
@@ -37,6 +49,18 @@ export async function GET(request: NextRequest) {
           (EXTRACT(EPOCH FROM timestamp - date_trunc('hour', timestamp))::int
            / EXTRACT(EPOCH FROM $2::interval)::int)
           * $2::interval`;
+
+    const stationFilter = useStation
+      ? `AND station_id = $${truncUnit ? "2" : "3"}`
+      : "";
+
+    const params = truncUnit
+      ? useStation
+        ? [interval, stationId]
+        : [interval]
+      : useStation
+        ? [interval, bucket, stationId]
+        : [interval, bucket];
 
     const { rows } = await pool.query(
       `SELECT
@@ -54,21 +78,27 @@ export async function GET(request: NextRequest) {
         ROUND(AVG(humidity)::numeric, 1)::float AS humidity
       FROM weather_readings
       WHERE timestamp >= NOW() - $1::interval
+        ${stationFilter}
       GROUP BY 1
       ORDER BY 1 ASC`,
-      truncUnit ? [interval] : [interval, bucket],
+      params,
     );
     return NextResponse.json(rows);
   }
 
   // Day range: return all rows for today (since midnight)
+  const stationFilter = useStation ? "AND station_id = $1" : "";
+  const params = useStation ? [stationId] : [];
+
   const { rows } = await pool.query(
     `SELECT
       timestamp, outside_temp, dew_point, wind_chill, heat_index,
       wind_speed, wind_gust, wind_dir, barometer, rain, rain_rate, humidity
     FROM weather_readings
     WHERE timestamp::date = CURRENT_DATE
+      ${stationFilter}
     ORDER BY timestamp ASC`,
+    params,
   );
 
   return NextResponse.json(rows);

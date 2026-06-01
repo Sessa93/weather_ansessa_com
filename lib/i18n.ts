@@ -93,6 +93,9 @@ const messages = {
     },
     graphs: {
       title: "Weather Observation Graphs",
+      exportCSV: "Export CSV",
+      exportJSON: "Export JSON",
+      compareLastYear: "Compare Last Year",
     },
     charts: {
       temperature: "Temperature",
@@ -105,9 +108,12 @@ const messages = {
       rainRate: "Rain Rate",
       total: "Total",
       barometer: "Barometer",
+      humidity: "Humidity",
       monthlyRainfall: "Monthly Rainfall",
       rainLabel: "Rain",
       climatology: "Average Climatological Values",
+      heatmap: "Year at a Glance",
+      lastYear: "Last Year",
       dailyMax: "Daily Max",
       dailyAvg: "Daily Avg",
       dailyMin: "Daily Min",
@@ -152,6 +158,12 @@ const messages = {
     },
     windy: {
       title: "Windy Weather Radar",
+    },
+    lightning: {
+      title: "Lightning Activity",
+      strikes: "strikes detected",
+      nearest: "Nearest",
+      within: "within",
     },
   },
   it: {
@@ -234,6 +246,9 @@ const messages = {
     },
     graphs: {
       title: "Grafici delle osservazioni meteo",
+      exportCSV: "Esporta CSV",
+      exportJSON: "Esporta JSON",
+      compareLastYear: "Confronta anno scorso",
     },
     charts: {
       temperature: "Temperatura",
@@ -246,9 +261,12 @@ const messages = {
       rainRate: "Intensita",
       total: "Totale",
       barometer: "Barometro",
+      humidity: "Umidita",
       monthlyRainfall: "Pioggia mensile",
       rainLabel: "Pioggia",
       climatology: "Valori climatologici medi",
+      heatmap: "Panoramica annuale",
+      lastYear: "Anno scorso",
       dailyMax: "Massima giornaliera",
       dailyAvg: "Media giornaliera",
       dailyMin: "Minima giornaliera",
@@ -293,6 +311,12 @@ const messages = {
     },
     windy: {
       title: "Radar meteo",
+    },
+    lightning: {
+      title: "Attivita elettrica",
+      strikes: "fulmini rilevati",
+      nearest: "Piu vicino",
+      within: "entro",
     },
   },
 } as const;
