@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import type { CurrentConditions } from "@/lib/types";
 import { useLiveWeather } from "@/lib/useLiveWeather";
 import WeatherIcon from "./WeatherIcon";
+import { useLocale } from "./LocaleProvider";
+import { translateCurrentCondition } from "@/lib/i18n";
 
 function windDirection(deg: number | null | undefined): string {
   if (deg === null || deg === undefined) return "";
@@ -29,24 +31,29 @@ function windDirection(deg: number | null | undefined): string {
 }
 
 export default function CurrentConditionsPanel() {
+  const { locale, intlLocale, messages } = useLocale();
   const [data, setData] = useState<CurrentConditions | null>(null);
   const [error, setError] = useState<string | null>(null);
   const { patch, connected } = useLiveWeather();
+  const connectionError = messages.current.connectionError;
 
   const fmt = (val: number | null | undefined, decimals: number) => {
-    if (val === null || val === undefined) return "n/a";
+    if (val === null || val === undefined) return messages.common.unavailable;
     return val.toFixed(decimals);
   };
 
   const fmtRecordedAt = (value: string | null | undefined) => {
-    if (!value) return "Recorded —";
-    return `Recorded ${new Date(value).toLocaleString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-    })}`;
+    if (!value) return `${messages.common.recorded} —`;
+    return `${messages.common.recorded} ${new Date(value).toLocaleString(
+      intlLocale,
+      {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+      },
+    )}`;
   };
 
   // Fetch once on mount; live updates come via MQTT
@@ -60,11 +67,11 @@ export default function CurrentConditionsPanel() {
         setData(d);
         setError(null);
       })
-      .catch(() => setError("Unable to connect to weather station"));
+      .catch(() => setError(connectionError));
 
     // Ask the WLL to start broadcasting UDP packets for 5 minutes
     fetch("/api/start-live", { method: "POST" }).catch(() => {});
-  }, []);
+  }, [connectionError]);
 
   // Merge live MQTT patch (wind + rain) over the HTTP baseline
   const display = data
@@ -103,7 +110,7 @@ export default function CurrentConditionsPanel() {
     );
   }
 
-  const timestamp = new Date(display.timestamp).toLocaleString("en-US", {
+  const timestamp = new Date(display.timestamp).toLocaleString(intlLocale, {
     month: "short",
     day: "numeric",
     year: "numeric",
@@ -121,7 +128,9 @@ export default function CurrentConditionsPanel() {
             connected ? "bg-green-400" : "bg-yellow-400"
           }`}
         />
-        {connected ? "Live · " : "Last known · "}
+        {connected
+          ? `${messages.current.live} · `
+          : `${messages.current.lastKnown} · `}
         {timestamp}
       </div>
 
@@ -144,10 +153,10 @@ export default function CurrentConditionsPanel() {
           {/* Condition + feels like */}
           <div>
             <div className="text-xl font-medium text-slate-200">
-              {display.condition}
+              {translateCurrentCondition(display.condition, locale)}
             </div>
             <div className="text-sm text-slate-400">
-              Feels like: {fmt(display.feels_like, 1)} °C
+              {messages.current.feelsLike}: {fmt(display.feels_like, 1)} °C
             </div>
           </div>
 
@@ -155,7 +164,7 @@ export default function CurrentConditionsPanel() {
           <div className="ml-auto flex gap-4">
             <div className="text-center">
               <div className="text-xs text-slate-400 uppercase font-semibold">
-                High
+                {messages.current.high}
               </div>
               <div className="text-lg font-medium text-red-400">
                 {fmt(display.high, 1)} °C
@@ -166,7 +175,7 @@ export default function CurrentConditionsPanel() {
             </div>
             <div className="text-center">
               <div className="text-xs text-slate-400 uppercase font-semibold">
-                Low
+                {messages.current.low}
               </div>
               <div className="text-lg font-medium text-blue-400">
                 {fmt(display.low, 1)} °C
@@ -180,9 +189,9 @@ export default function CurrentConditionsPanel() {
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
           <MetricCard
-            label="Wind"
+            label={messages.current.wind}
             value={`${fmt(display.wind_speed, 0)} km/h ${windDirection(display.wind_dir)}`}
-            sub={`Gust: ${fmt(display.wind_gust, 0)} km/h`}
+            sub={`${messages.current.gust}: ${fmt(display.wind_gust, 0)} km/h`}
             icon={
               <svg
                 width="16"
@@ -201,7 +210,7 @@ export default function CurrentConditionsPanel() {
             }
           />
           <MetricCard
-            label="Barometer"
+            label={messages.current.barometer}
             value={`${fmt(display.barometer, 1)} mbar`}
             icon={
               <svg
@@ -220,7 +229,7 @@ export default function CurrentConditionsPanel() {
             }
           />
           <MetricCard
-            label="Dew Point"
+            label={messages.current.dewPoint}
             value={`${fmt(display.dew_point, 1)} °C`}
             icon={
               <svg
@@ -238,7 +247,7 @@ export default function CurrentConditionsPanel() {
             }
           />
           <MetricCard
-            label="Humidity"
+            label={messages.current.humidity}
             value={`${fmt(display.humidity, 0)}%`}
             icon={
               <svg
@@ -256,9 +265,9 @@ export default function CurrentConditionsPanel() {
             }
           />
           <MetricCard
-            label="Rain Today"
+            label={messages.current.rainToday}
             value={`${fmt(display.rain_today, 1)} mm`}
-            sub={`Rate: ${fmt(display.rain_rate, 1)} mm/hr`}
+            sub={`${messages.current.rate}: ${fmt(display.rain_rate, 1)} mm/hr`}
             icon={
               <svg
                 width="16"
@@ -278,7 +287,7 @@ export default function CurrentConditionsPanel() {
             }
           />
           <MetricCard
-            label="Sunrise"
+            label={messages.current.sunrise}
             value={display.sunrise}
             icon={
               <svg
@@ -302,7 +311,7 @@ export default function CurrentConditionsPanel() {
             }
           />
           <MetricCard
-            label="Sunset"
+            label={messages.current.sunset}
             value={display.sunset}
             icon={
               <svg
@@ -326,9 +335,9 @@ export default function CurrentConditionsPanel() {
             }
           />
           <MetricCard
-            label="Moon"
+            label={messages.current.moon}
             value={display.moon_phase}
-            sub={`${display.moon_visible}% visible`}
+            sub={`${display.moon_visible}% ${messages.current.visible}`}
             icon={
               <svg
                 width="16"

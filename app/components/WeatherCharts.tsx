@@ -15,9 +15,9 @@ import {
   Bar,
   ComposedChart,
 } from "recharts";
-import { format } from "date-fns";
 
 import type { ReactNode } from "react";
+import { useLocale } from "./LocaleProvider";
 
 interface Reading {
   timestamp: string;
@@ -34,12 +34,26 @@ interface Reading {
   humidity: number | null;
 }
 
-function formatTime(label: ReactNode) {
-  return format(new Date(String(label)), "HH:mm");
+function formatTime(label: ReactNode, intlLocale: string) {
+  const value = new Date(String(label));
+  if (Number.isNaN(value.getTime())) return String(label);
+  return value.toLocaleTimeString(intlLocale, {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
 }
 
-function formatDate(label: ReactNode) {
-  return format(new Date(String(label)), "dd MMM HH:mm");
+function formatDate(label: ReactNode, intlLocale: string) {
+  const value = new Date(String(label));
+  if (Number.isNaN(value.getTime())) return String(label);
+  return value.toLocaleString(intlLocale, {
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
 }
 
 export function TemperatureChart({
@@ -49,10 +63,14 @@ export function TemperatureChart({
   data: Reading[];
   long?: boolean;
 }) {
-  const fmt = long ? formatDate : formatTime;
+  const { intlLocale, messages } = useLocale();
+  const fmt = (label: ReactNode) =>
+    long ? formatDate(label, intlLocale) : formatTime(label, intlLocale);
   return (
     <div className="bg-slate-800 rounded-lg shadow-lg border border-slate-700 p-4 flex flex-col">
-      <h3 className="text-sm font-semibold text-slate-300 mb-2">Temperature</h3>
+      <h3 className="text-sm font-semibold text-slate-300 mb-2">
+        {messages.charts.temperature}
+      </h3>
       <ResponsiveContainer width="100%" className="flex-1" minHeight={260}>
         <LineChart data={data}>
           <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
@@ -84,7 +102,7 @@ export function TemperatureChart({
           <Line
             type="monotone"
             dataKey="outside_temp"
-            name="Temperature"
+            name={messages.charts.temperature}
             stroke="#ef4444"
             dot={false}
             strokeWidth={2}
@@ -93,7 +111,7 @@ export function TemperatureChart({
           <Line
             type="monotone"
             dataKey="dew_point"
-            name="Dew Point"
+            name={messages.charts.dewPoint}
             stroke="#3b82f6"
             dot={false}
             strokeWidth={1.5}
@@ -102,7 +120,7 @@ export function TemperatureChart({
           <Line
             type="monotone"
             dataKey="wind_chill"
-            name="Wind Chill"
+            name={messages.charts.windChill}
             stroke="#8b5cf6"
             dot={false}
             strokeWidth={1}
@@ -112,7 +130,7 @@ export function TemperatureChart({
           <Line
             type="monotone"
             dataKey="heat_index"
-            name="Heat Index"
+            name={messages.charts.heatIndex}
             stroke="#f97316"
             dot={false}
             strokeWidth={1}
@@ -126,10 +144,14 @@ export function TemperatureChart({
 }
 
 export function WindChart({ data, long }: { data: Reading[]; long?: boolean }) {
-  const fmt = long ? formatDate : formatTime;
+  const { intlLocale, messages } = useLocale();
+  const fmt = (label: ReactNode) =>
+    long ? formatDate(label, intlLocale) : formatTime(label, intlLocale);
   return (
     <div className="bg-slate-800 rounded-lg shadow-lg border border-slate-700 p-4">
-      <h3 className="text-sm font-semibold text-slate-300 mb-2">Wind Speed</h3>
+      <h3 className="text-sm font-semibold text-slate-300 mb-2">
+        {messages.charts.windSpeed}
+      </h3>
       <ResponsiveContainer width="100%" height={260}>
         <AreaChart data={data}>
           <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
@@ -161,7 +183,7 @@ export function WindChart({ data, long }: { data: Reading[]; long?: boolean }) {
           <Area
             type="monotone"
             dataKey="wind_gust"
-            name="Gust"
+            name={messages.charts.gust}
             stroke="#f59e0b"
             fill="#78350f"
             fillOpacity={0.4}
@@ -171,7 +193,7 @@ export function WindChart({ data, long }: { data: Reading[]; long?: boolean }) {
           <Area
             type="monotone"
             dataKey="wind_speed"
-            name="Wind Speed"
+            name={messages.charts.windSpeed}
             stroke="#10b981"
             fill="#064e3b"
             fillOpacity={0.4}
@@ -185,17 +207,24 @@ export function WindChart({ data, long }: { data: Reading[]; long?: boolean }) {
 }
 
 export function RainChart({ data, long }: { data: Reading[]; long?: boolean }) {
-  const fmt = long ? formatDate : formatTime;
-  // Compute cumulative rain
-  let cumulative = 0;
-  const rainData = data.map((d) => {
-    cumulative += Number(d.rain) || 0;
-    return { ...d, rain_total: +cumulative.toFixed(1) };
-  });
+  const { intlLocale, messages } = useLocale();
+  const fmt = (label: ReactNode) =>
+    long ? formatDate(label, intlLocale) : formatTime(label, intlLocale);
+  const rainData = data.reduce<Array<Reading & { rain_total: number }>>(
+    (acc, reading) => {
+      const previousTotal = acc[acc.length - 1]?.rain_total ?? 0;
+      const nextTotal = previousTotal + (Number(reading.rain) || 0);
+      acc.push({ ...reading, rain_total: +nextTotal.toFixed(1) });
+      return acc;
+    },
+    [],
+  );
 
   return (
     <div className="bg-slate-800 rounded-lg shadow-lg border border-slate-700 p-4">
-      <h3 className="text-sm font-semibold text-slate-300 mb-2">Rain</h3>
+      <h3 className="text-sm font-semibold text-slate-300 mb-2">
+        {messages.charts.rain}
+      </h3>
       <ResponsiveContainer width="100%" height={260}>
         <ComposedChart data={rainData}>
           <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
@@ -235,14 +264,14 @@ export function RainChart({ data, long }: { data: Reading[]; long?: boolean }) {
           <Bar
             yAxisId="left"
             dataKey="rain_rate"
-            name="Rain Rate"
+            name={messages.charts.rainRate}
             fill="#60a5fa"
           />
           <Line
             yAxisId="right"
             type="monotone"
             dataKey="rain_total"
-            name="Total"
+            name={messages.charts.total}
             stroke="#1d4ed8"
             dot={false}
             strokeWidth={2}
@@ -261,10 +290,14 @@ export function BarometerChart({
   data: Reading[];
   long?: boolean;
 }) {
-  const fmt = long ? formatDate : formatTime;
+  const { intlLocale, messages } = useLocale();
+  const fmt = (label: ReactNode) =>
+    long ? formatDate(label, intlLocale) : formatTime(label, intlLocale);
   return (
     <div className="bg-slate-800 rounded-lg shadow-lg border border-slate-700 p-4">
-      <h3 className="text-sm font-semibold text-slate-300 mb-2">Barometer</h3>
+      <h3 className="text-sm font-semibold text-slate-300 mb-2">
+        {messages.charts.barometer}
+      </h3>
       <ResponsiveContainer width="100%" height={260}>
         <AreaChart data={data}>
           <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
@@ -293,7 +326,7 @@ export function BarometerChart({
           <Area
             type="monotone"
             dataKey="barometer"
-            name="Barometer"
+            name={messages.charts.barometer}
             stroke="#818cf8"
             fill="#312e81"
             fillOpacity={0.4}
@@ -311,16 +344,17 @@ export function MonthlyRainChart({
 }: {
   data: { month: string; total_rain: number }[];
 }) {
+  const { intlLocale, messages } = useLocale();
   const formatted = data.map((d) => ({
     ...d,
-    label: format(new Date(d.month), "MMM"),
+    label: new Date(d.month).toLocaleDateString(intlLocale, { month: "short" }),
     total_rain: +(d.total_rain ?? 0),
   }));
 
   return (
     <div className="bg-slate-800 rounded-lg shadow-lg border border-slate-700 p-4">
       <h3 className="text-sm font-semibold text-slate-300 mb-2">
-        Rain Totals By Month
+        {messages.charts.monthlyRainfall}
       </h3>
       <ResponsiveContainer width="100%" height={260}>
         <BarChart data={formatted}>
@@ -345,7 +379,7 @@ export function MonthlyRainChart({
           />
           <Bar
             dataKey="total_rain"
-            name="Rain (mm)"
+            name={`${messages.charts.rainLabel} (mm)`}
             fill="#3b82f6"
             radius={[4, 4, 0, 0]}
           />

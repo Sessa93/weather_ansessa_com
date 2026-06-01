@@ -7,15 +7,9 @@ import {
   BarometerChart,
 } from "../components/WeatherCharts";
 import WindRose from "../components/WindRose";
+import { useLocale } from "../components/LocaleProvider";
 
 type Range = "day" | "week" | "month" | "year";
-
-const ranges: { value: Range; label: string }[] = [
-  { value: "day", label: "Today" },
-  { value: "week", label: "Week" },
-  { value: "month", label: "Month" },
-  { value: "year", label: "Year" },
-];
 
 interface Reading {
   timestamp: string;
@@ -33,12 +27,19 @@ interface Reading {
 }
 
 export default function GraphsPage() {
+  const { messages } = useLocale();
   const [range, setRange] = useState<Range>("day");
   const [readings, setReadings] = useState<Reading[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const ranges: { value: Range; label: string }[] = [
+    { value: "day", label: messages.common.today },
+    { value: "week", label: messages.common.week },
+    { value: "month", label: messages.common.month },
+    { value: "year", label: messages.common.year },
+  ];
+
   useEffect(() => {
-    setLoading(true);
     fetch(`/api/readings?range=${range}`)
       .then((r) => r.json())
       .then((data) => {
@@ -53,7 +54,7 @@ export default function GraphsPage() {
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
       <h1 className="text-2xl font-bold text-slate-100">
-        Weather Observation Graphs
+        {messages.graphs.title}
       </h1>
 
       {/* Range selector */}
@@ -61,7 +62,10 @@ export default function GraphsPage() {
         {ranges.map((r) => (
           <button
             key={r.value}
-            onClick={() => setRange(r.value)}
+            onClick={() => {
+              setLoading(true);
+              setRange(r.value);
+            }}
             className={`px-4 py-2 text-sm font-medium rounded transition-colors ${
               range === r.value
                 ? "bg-sky-600 text-white"

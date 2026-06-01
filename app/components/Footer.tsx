@@ -1,4 +1,10 @@
+"use client";
+
+import { useLocale } from "./LocaleProvider";
+
 export default function Footer() {
+  const { messages } = useLocale();
+
   return (
     <footer className="bg-slate-950 text-slate-500 text-center py-4 text-sm mt-auto border-t border-slate-800">
       <p>
@@ -8,7 +14,7 @@ export default function Footer() {
         </a>
       </p>
       <p className="mt-1 text-xs text-slate-600">
-        Never make important decisions from this website.
+        {messages.footer.disclaimer}
       </p>
     </footer>
   );

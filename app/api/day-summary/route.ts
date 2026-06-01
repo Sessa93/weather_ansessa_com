@@ -1,8 +1,12 @@
 import pool from "@/lib/db";
+import { getMessages } from "@/lib/i18n";
+import { getRequestLocale } from "@/lib/server-locale";
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
 
 export async function GET() {
+  const locale = await getRequestLocale();
+  const messages = getMessages(locale);
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     return NextResponse.json(
@@ -38,7 +42,7 @@ export async function GET() {
   const stats = rows[0];
 
   if (!stats || Number(stats.readings) === 0) {
-    return NextResponse.json({ summary: "No data available for today yet." });
+    return NextResponse.json({ summary: messages.daySummary.noData });
   }
 
   // Pressure trend (last 3 hours)
@@ -53,9 +57,34 @@ export async function GET() {
   `);
   const baroTrend = Number(trendRows[0]?.baro_trend) || 0;
   const trendLabel =
-    baroTrend > 0.5 ? "rising" : baroTrend < -0.5 ? "falling" : "steady";
+    locale === "it"
+      ? baroTrend > 0.5
+        ? "in aumento"
+        : baroTrend < -0.5
+          ? "in calo"
+          : "stabile"
+      : baroTrend > 0.5
+        ? "rising"
+        : baroTrend < -0.5
+          ? "falling"
+          : "steady";
 
-  const prompt = `You are a friendly weather reporter for a local weather station in Jerago con Orago, Italy (Lombardy, near Varese).
+  const prompt =
+    locale === "it"
+      ? `Sei un cronista meteo cordiale per una stazione meteorologica locale di Jerago con Orago, Italia (Lombardia, vicino a Varese).
+In base ai dati qui sotto, riassumi prima il meteo di oggi finora in 2-3 frasi, poi fornisci una breve previsione per il resto della giornata in 1-2 frasi.
+
+Dati di oggi finora:
+- Temperatura: min ${stats.temp_min}°C, max ${stats.temp_max}°C, media ${stats.temp_avg}°C
+- Umidita: min ${stats.hum_min}%, max ${stats.hum_max}%, media ${stats.hum_avg}%
+- Vento: media ${stats.wind_avg} km/h, raffica max ${stats.wind_gust_max} km/h
+- Pioggia: totale ${stats.rain_total} mm, intensita max ${stats.rain_rate_max} mm/h
+- Barometro: ${stats.baro_min}–${stats.baro_max} mbar (attualmente ${trendLabel})
+- Punto di rugiada: ${stats.dew_min}–${stats.dew_max}°C
+- Wind chill minimo: ${stats.wind_chill_min}°C, indice di calore massimo: ${stats.heat_index_max}°C
+
+Usa il trend barometrico, i livelli di umidita, l'andamento della temperatura e l'eventuale pioggia per dedurre la previsione. Sii naturale, cita condizioni notevoli (caldo/freddo, pioggia, vento). Usa unita metriche. Non aggiungere saluti o formule finali. Formattta la previsione come un breve paragrafo separato che inizi con "${messages.daySummary.forecastPrefix}".`
+      : `You are a friendly weather reporter for a local weather station in Jerago con Orago, Italy (Lombardy, near Varese).
 Based on the data below, first summarize today's weather so far in 2-3 sentences, then provide a brief forecast for the rest of the day in 1-2 sentences.
 
 Today's data so far:
@@ -67,7 +96,7 @@ Today's data so far:
 - Dew point: ${stats.dew_min}–${stats.dew_max}°C
 - Wind chill low: ${stats.wind_chill_min}°C, Heat index high: ${stats.heat_index_max}°C
 
-Use the barometric pressure trend, humidity levels, temperature patterns, and any rain activity to infer the forecast. Be natural, mention notable conditions (hot/cold, rain, wind). Use metric units. Do not add greetings or sign-offs. Format the forecast as a separate short paragraph starting with "Forecast:".`;
+Use the barometric pressure trend, humidity levels, temperature patterns, and any rain activity to infer the forecast. Be natural, mention notable conditions (hot/cold, rain, wind). Use metric units. Do not add greetings or sign-offs. Format the forecast as a separate short paragraph starting with "${messages.daySummary.forecastPrefix}".`;
 
   const openai = new OpenAI({ apiKey });
   const completion = await openai.chat.completions.create({
@@ -79,7 +108,7 @@ Use the barometric pressure trend, humidity levels, temperature patterns, and an
 
   const summary =
     completion.choices[0]?.message?.content?.trim() ??
-    "Unable to generate summary.";
+    messages.daySummary.unable;
 
   return NextResponse.json({ summary });
 }

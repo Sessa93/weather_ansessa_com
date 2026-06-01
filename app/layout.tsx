@@ -3,6 +3,9 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
+import { LocaleProvider } from "./components/LocaleProvider";
+import { getMessages } from "@/lib/i18n";
+import { getRequestLocale } from "@/lib/server-locale";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -14,25 +17,34 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "Jerago con Orago Weather",
-  description: "Realtime and historical weather data for Jerago con Orago",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getRequestLocale();
+  const messages = getMessages(locale);
 
-export default function RootLayout({
+  return {
+    title: messages.metadata.title,
+    description: messages.metadata.description,
+  };
+}
+
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const locale = await getRequestLocale();
+
   return (
     <html
-      lang="en"
+      lang={locale}
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-slate-900">
-        <Navbar />
-        <main className="flex-1">{children}</main>
-        <Footer />
+        <LocaleProvider initialLocale={locale}>
+          <Navbar />
+          <main className="flex-1">{children}</main>
+          <Footer />
+        </LocaleProvider>
       </body>
     </html>
   );

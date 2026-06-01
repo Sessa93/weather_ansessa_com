@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useLocale } from "./LocaleProvider";
 
 interface RecordSnapshot {
   high_temp: number | null;
@@ -26,9 +27,12 @@ function fmt(v: number | null | undefined): string {
   return Number(v).toFixed(1);
 }
 
-function fmtRecordedAt(value: string | null | undefined): string {
+function fmtRecordedAt(
+  value: string | null | undefined,
+  intlLocale: string,
+): string {
   if (!value) return "—";
-  return new Date(value).toLocaleString("en-US", {
+  return new Date(value).toLocaleString(intlLocale, {
     month: "short",
     day: "numeric",
     year: "numeric",
@@ -38,6 +42,7 @@ function fmtRecordedAt(value: string | null | undefined): string {
 }
 
 export default function RecordSnapshots() {
+  const { intlLocale, messages } = useLocale();
   const [data, setData] = useState<RecordsData | null>(null);
 
   useEffect(() => {
@@ -60,13 +65,15 @@ export default function RecordSnapshots() {
     );
   }
 
-  const todayLabel = "Today";
-  const todaySub = new Date().toLocaleDateString("en-US", {
+  const todayLabel = messages.common.today;
+  const todaySub = new Date().toLocaleDateString(intlLocale, {
     weekday: "short",
     month: "short",
     day: "numeric",
   });
-  const monthLabel = new Date().toLocaleDateString("en-US", { month: "long" });
+  const monthLabel = new Date().toLocaleDateString(intlLocale, {
+    month: "long",
+  });
   const yearLabel = new Date().getFullYear().toString();
 
   return (
@@ -90,7 +97,7 @@ export default function RecordSnapshots() {
           <path d="M5 2h14" />
         </svg>
         <h2 className="text-lg font-semibold text-slate-100">
-          Weather Record Snapshots
+          {messages.snapshots.title}
         </h2>
       </div>
 
@@ -103,13 +110,13 @@ export default function RecordSnapshots() {
         />
         <SnapshotCard
           title={monthLabel}
-          subtitle="Monthly totals"
+          subtitle={messages.snapshots.monthlyTotals}
           data={data.month}
           accent="purple"
         />
         <SnapshotCard
           title={yearLabel}
-          subtitle="Annual summary"
+          subtitle={messages.snapshots.annualSummary}
           data={data.year}
           accent="indigo"
         />
@@ -129,6 +136,7 @@ function SnapshotCard({
   data: RecordSnapshot;
   accent: "sky" | "purple" | "indigo";
 }) {
+  const { intlLocale, messages } = useLocale();
   const accentColors = {
     sky: "text-sky-400",
     purple: "text-purple-400",
@@ -166,20 +174,22 @@ function SnapshotCard({
             >
               <path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z" />
             </svg>
-            Temperature
+            {messages.snapshots.temperature}
           </div>
           <div className="grid grid-cols-2 gap-2">
             <MetricBox
-              label="High"
+              label={messages.snapshots.high}
               value={`${fmt(data.high_temp)}°`}
               color="text-red-400"
-              recordedAt={fmtRecordedAt(data.high_temp_recorded_at)}
+              recordedAt={fmtRecordedAt(data.high_temp_recorded_at, intlLocale)}
+              recordedLabel={messages.common.recorded}
             />
             <MetricBox
-              label="Low"
+              label={messages.snapshots.low}
               value={`${fmt(data.low_temp)}°`}
               color="text-blue-400"
-              recordedAt={fmtRecordedAt(data.low_temp_recorded_at)}
+              recordedAt={fmtRecordedAt(data.low_temp_recorded_at, intlLocale)}
+              recordedLabel={messages.common.recorded}
             />
           </div>
         </div>
@@ -201,19 +211,20 @@ function SnapshotCard({
               <path d="M9.6 4.6A2 2 0 1 1 11 8H2" />
               <path d="M12.6 19.4A2 2 0 1 0 14 16H2" />
             </svg>
-            Wind Speed
+            {messages.snapshots.windSpeed}
           </div>
           <div className="grid grid-cols-2 gap-2">
             <MetricBox
-              label="Average"
+              label={messages.snapshots.average}
               value={`${fmt(data.avg_wind)}`}
               unit="km/h"
             />
             <MetricBox
-              label="Max Gust"
+              label={messages.snapshots.maxGust}
               value={`${fmt(data.high_wind)}`}
               unit="km/h"
-              recordedAt={fmtRecordedAt(data.high_wind_recorded_at)}
+              recordedAt={fmtRecordedAt(data.high_wind_recorded_at, intlLocale)}
+              recordedLabel={messages.common.recorded}
             />
           </div>
         </div>
@@ -236,19 +247,23 @@ function SnapshotCard({
               <path d="M8 14v6" />
               <path d="M12 16v6" />
             </svg>
-            Precipitation
+            {messages.snapshots.precipitation}
           </div>
           <div className="grid grid-cols-2 gap-2">
             <MetricBox
-              label="Total Rain"
+              label={messages.snapshots.totalRain}
               value={`${fmt(data.total_rain)}`}
               unit="mm"
             />
             <MetricBox
-              label="Max Rate"
+              label={messages.snapshots.maxRate}
               value={`${fmt(data.high_rain_rate)}`}
               unit="mm/h"
-              recordedAt={fmtRecordedAt(data.high_rain_rate_recorded_at)}
+              recordedAt={fmtRecordedAt(
+                data.high_rain_rate_recorded_at,
+                intlLocale,
+              )}
+              recordedLabel={messages.common.recorded}
             />
           </div>
         </div>
@@ -262,12 +277,14 @@ function MetricBox({
   value,
   unit,
   recordedAt,
+  recordedLabel,
   color = "text-slate-200",
 }: {
   label: string;
   value: string;
   unit?: string;
   recordedAt?: string;
+  recordedLabel?: string;
   color?: string;
 }) {
   return (
@@ -285,7 +302,7 @@ function MetricBox({
       </div>
       {recordedAt && (
         <div className="mt-1 text-[10px] leading-tight text-slate-500">
-          Recorded {recordedAt}
+          {recordedLabel} {recordedAt}
         </div>
       )}
     </div>

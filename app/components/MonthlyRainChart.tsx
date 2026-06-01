@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import {
   BarChart,
   Bar,
@@ -10,21 +10,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-
-const MONTH_LABELS = [
-  "Jan",
-  "Feb",
-  "Mar",
-  "Apr",
-  "May",
-  "Jun",
-  "Jul",
-  "Aug",
-  "Sep",
-  "Oct",
-  "Nov",
-  "Dec",
-];
+import { useLocale } from "./LocaleProvider";
 
 interface MonthData {
   month: number;
@@ -32,49 +18,52 @@ interface MonthData {
 }
 
 export default function MonthlyRainChart() {
+  const { intlLocale, messages } = useLocale();
   const [year, setYear] = useState(new Date().getFullYear());
   const [years, setYears] = useState<number[]>([]);
   const [data, setData] = useState<{ name: string; rain: number }[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchData = useCallback(async (y: number) => {
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/rain-by-month?year=${y}`);
-      const json = await res.json();
-
-      // Build full 12-month array, filling missing months with 0
-      const byMonth = new Map<number, number>();
-      json.months.forEach((m: MonthData) => byMonth.set(m.month, m.total));
-
-      setData(
-        MONTH_LABELS.map((name, i) => ({
-          name,
-          rain: byMonth.get(i + 1) ?? 0,
-        })),
-      );
-
-      if (json.years?.length) setYears(json.years);
-    } catch {
-      // ignore
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
   useEffect(() => {
-    fetchData(year);
-  }, [year, fetchData]);
+    const monthFormatter = new Intl.DateTimeFormat(intlLocale, {
+      month: "short",
+    });
+
+    fetch(`/api/rain-by-month?year=${year}`)
+      .then((res) => res.json())
+      .then((json) => {
+        const byMonth = new Map<number, number>();
+        json.months.forEach((month: MonthData) =>
+          byMonth.set(month.month, month.total),
+        );
+
+        setData(
+          Array.from({ length: 12 }, (_, i) => ({
+            name: monthFormatter.format(new Date(year, i, 1)),
+            rain: byMonth.get(i + 1) ?? 0,
+          })),
+        );
+
+        if (json.years?.length) {
+          setYears(json.years);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [year, intlLocale]);
 
   return (
     <div className="bg-slate-800 rounded-lg shadow-lg border border-slate-700 p-4">
       <div className="flex items-center justify-between mb-2">
         <h3 className="text-sm font-semibold text-slate-300">
-          Monthly Rainfall
+          {messages.charts.monthlyRainfall}
         </h3>
         <select
           value={year}
-          onChange={(e) => setYear(Number(e.target.value))}
+          onChange={(e) => {
+            setLoading(true);
+            setYear(Number(e.target.value));
+          }}
           className="bg-slate-700 text-slate-200 text-xs rounded px-2 py-1 border border-slate-600 focus:outline-none focus:border-sky-500"
         >
           {years.map((y) => (
@@ -123,7 +112,7 @@ export default function MonthlyRainChart() {
                   ? name
                   : typeof name === "number"
                     ? name.toString()
-                    : "Rain",
+                    : messages.charts.rainLabel,
               ]}
               contentStyle={{
                 backgroundColor: "#1e293b",
@@ -134,7 +123,7 @@ export default function MonthlyRainChart() {
             />
             <Bar
               dataKey="rain"
-              name="Rain"
+              name={messages.charts.rainLabel}
               fill="#38bdf8"
               radius={[4, 4, 0, 0]}
             />

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import {
   LineChart,
   Line,
@@ -11,7 +11,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
-import { format, parseISO } from "date-fns";
+import { useLocale } from "./LocaleProvider";
 
 interface DayRow {
   date: string;
@@ -21,32 +21,28 @@ interface DayRow {
 }
 
 export default function ClimatologyChart() {
+  const { intlLocale, messages } = useLocale();
   const [year, setYear] = useState(new Date().getFullYear());
   const [years, setYears] = useState<number[]>([]);
   const [data, setData] = useState<DayRow[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchData = useCallback(async (y: number) => {
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/climatology?year=${y}`);
-      const json = await res.json();
-      setData(json.data ?? []);
-      if (json.years?.length) setYears(json.years);
-    } catch {
-      // ignore
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
   useEffect(() => {
-    fetchData(year);
-  }, [year, fetchData]);
+    fetch(`/api/climatology?year=${year}`)
+      .then((res) => res.json())
+      .then((json) => {
+        setData(json.data ?? []);
+        if (json.years?.length) {
+          setYears(json.years);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [year]);
 
   const fmtTick = (val: string) => {
     try {
-      return format(parseISO(val), "MMM");
+      return new Date(val).toLocaleDateString(intlLocale, { month: "short" });
     } catch {
       return val;
     }
@@ -65,13 +61,20 @@ export default function ClimatologyChart() {
     return acc;
   }, []);
 
-  const fmtTooltip = (label: any) => {
+  const fmtTooltip = (label: ReactNode): ReactNode => {
     if (typeof label === "string") {
       try {
-        return format(parseISO(label), "d MMM yyyy");
+        return new Date(label).toLocaleDateString(intlLocale, {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+        });
       } catch {
         return label;
       }
+    }
+    if (typeof label === "number") {
+      return String(label);
     }
     return label;
   };
@@ -80,11 +83,14 @@ export default function ClimatologyChart() {
     <div className="bg-slate-800 rounded-lg shadow-lg border border-slate-700 p-4">
       <div className="flex items-center justify-between mb-2">
         <h3 className="text-sm font-semibold text-slate-300">
-          Average Climatological Values
+          {messages.charts.climatology}
         </h3>
         <select
           value={year}
-          onChange={(e) => setYear(Number(e.target.value))}
+          onChange={(e) => {
+            setLoading(true);
+            setYear(Number(e.target.value));
+          }}
           className="bg-slate-700 text-slate-200 text-xs rounded px-2 py-1 border border-slate-600 focus:outline-none focus:border-sky-500"
         >
           {years.map((y) => (
@@ -149,7 +155,7 @@ export default function ClimatologyChart() {
             <Line
               type="monotone"
               dataKey="temp_max"
-              name="Daily Max"
+              name={messages.charts.dailyMax}
               stroke="#f87171"
               dot={false}
               strokeWidth={1.5}
@@ -158,7 +164,7 @@ export default function ClimatologyChart() {
             <Line
               type="monotone"
               dataKey="temp_avg"
-              name="Daily Avg"
+              name={messages.charts.dailyAvg}
               stroke="#a3e635"
               dot={false}
               strokeWidth={1.5}
@@ -167,7 +173,7 @@ export default function ClimatologyChart() {
             <Line
               type="monotone"
               dataKey="temp_min"
-              name="Daily Min"
+              name={messages.charts.dailyMin}
               stroke="#38bdf8"
               dot={false}
               strokeWidth={1.5}

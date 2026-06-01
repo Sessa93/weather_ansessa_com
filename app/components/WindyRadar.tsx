@@ -1,8 +1,14 @@
+"use client";
+
+import { useLocale } from "./LocaleProvider";
+
 export default function WindyRadar() {
+  const { messages } = useLocale();
+
   return (
     <div className="bg-slate-800 rounded-lg shadow-lg border border-slate-700 overflow-hidden h-full">
       <iframe
-        title="Windy Weather Radar"
+        title={messages.windy.title}
         width="100%"
         height="100%"
         style={{ minHeight: 350 }}

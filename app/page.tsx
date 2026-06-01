@@ -6,8 +6,13 @@ import MonthlyRainChart from "./components/MonthlyRainChart";
 import ClimatologyChart from "./components/ClimatologyChart";
 import DaySummary from "./components/DaySummary";
 import Forecast from "./components/Forecast";
+import { getMessages } from "@/lib/i18n";
+import { getRequestLocale } from "@/lib/server-locale";
 
-export default function Home() {
+export default async function Home() {
+  const locale = await getRequestLocale();
+  const messages = getMessages(locale);
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -23,7 +28,7 @@ export default function Home() {
 
       <div>
         <h2 className="text-lg font-semibold text-slate-300 mb-3">
-          Today&apos;s Charts
+          {messages.home.todayCharts}
         </h2>
         <HomeCharts />
       </div>

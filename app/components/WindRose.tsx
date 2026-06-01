@@ -9,6 +9,7 @@ import {
   PolarRadiusAxis,
   Tooltip,
 } from "recharts";
+import { useLocale } from "./LocaleProvider";
 
 interface Reading {
   wind_speed: number | null;
@@ -61,6 +62,7 @@ function degToDirIndex(deg: number): number {
 }
 
 export default function WindRose({ data }: { data: Reading[] }) {
+  const { messages } = useLocale();
   const { chartData, dominantDir, avgSpeed, maxGust, calmPct } = useMemo(() => {
     const bins: Record<string, Record<string, number>> = {};
     for (const dir of DIRECTIONS) {
@@ -130,18 +132,20 @@ export default function WindRose({ data }: { data: Reading[] }) {
   return (
     <div className="bg-slate-800 rounded-lg shadow-lg border border-slate-700 p-4 flex flex-col">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-semibold text-slate-300">Wind Rose</h3>
+        <h3 className="text-sm font-semibold text-slate-300">
+          {messages.windRose.title}
+        </h3>
         <div className="flex gap-3 text-[11px] text-slate-400">
           <span>
-            Avg <span className="text-sky-400 font-medium">{avgSpeed}</span>{" "}
-            km/h
+            {messages.windRose.avg}{" "}
+            <span className="text-sky-400 font-medium">{avgSpeed}</span> km/h
           </span>
           <span>
-            Gust <span className="text-amber-400 font-medium">{maxGust}</span>{" "}
-            km/h
+            {messages.windRose.gust}{" "}
+            <span className="text-amber-400 font-medium">{maxGust}</span> km/h
           </span>
           <span>
-            Dom{" "}
+            {messages.windRose.dominant}{" "}
             <span className="text-emerald-400 font-medium">{dominantDir}</span>
           </span>
         </div>
@@ -235,7 +239,7 @@ export default function WindRose({ data }: { data: Reading[] }) {
               {calmPct}%
             </span>
             <span className="text-[9px] text-slate-500 uppercase tracking-wider">
-              calm
+              {messages.windRose.calm}
             </span>
           </div>
         </div>

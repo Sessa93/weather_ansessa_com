@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useLocale } from "./LocaleProvider";
 
 export default function DaySummary() {
+  const { locale, messages } = useLocale();
   const [summary, setSummary] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -16,7 +18,7 @@ export default function DaySummary() {
       })
       .catch(() => setError(true))
       .finally(() => setLoading(false));
-  }, []);
+  }, [locale]);
 
   if (error) return null;
 
@@ -37,14 +39,14 @@ export default function DaySummary() {
           />
         </svg>
         <h3 className="text-sm font-semibold text-slate-300">
-          Today&apos;s Summary
+          {messages.daySummary.title}
         </h3>
       </div>
 
       {loading ? (
         <div className="flex items-center gap-2 text-slate-400 text-sm">
           <div className="w-4 h-4 border-2 border-sky-400 border-t-transparent rounded-full animate-spin" />
-          <span>Generating summary…</span>
+          <span>{messages.daySummary.generating}</span>
         </div>
       ) : (
         <p className="text-slate-300 text-sm leading-relaxed">{summary}</p>
