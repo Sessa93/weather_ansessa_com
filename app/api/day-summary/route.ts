@@ -15,6 +15,16 @@ export async function GET() {
     );
   }
 
+  // Check cache (6h TTL)
+  const { rows: cached } = await pool.query(
+    `SELECT summary FROM day_summary_cache
+     WHERE locale = $1 AND created_at > NOW() - INTERVAL '6 hours'`,
+    [locale],
+  );
+  if (cached.length > 0) {
+    return NextResponse.json({ summary: cached[0].summary });
+  }
+
   // Gather today's stats
   const { rows } = await pool.query(`
     SELECT
@@ -109,6 +119,14 @@ Use the barometric pressure trend, humidity levels, temperature patterns, and an
   const summary =
     completion.choices[0]?.message?.content?.trim() ??
     messages.daySummary.unable;
+
+  // Cache the summary (upsert per locale)
+  await pool.query(
+    `INSERT INTO day_summary_cache (locale, summary, created_at)
+     VALUES ($1, $2, NOW())
+     ON CONFLICT (locale) DO UPDATE SET summary = $2, created_at = NOW()`,
+    [locale, summary],
+  );
 
   return NextResponse.json({ summary });
 }

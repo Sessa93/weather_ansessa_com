@@ -41,3 +41,10 @@ CREATE TABLE IF NOT EXISTS all_time_records (
 );
 
 CREATE INDEX IF NOT EXISTS idx_alltime_category ON all_time_records (category);
+
+-- GPT day-summary cache (one row per locale, 6h TTL)
+CREATE TABLE IF NOT EXISTS day_summary_cache (
+  locale TEXT PRIMARY KEY,
+  summary TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
