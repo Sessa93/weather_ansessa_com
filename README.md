@@ -86,27 +86,34 @@ One-time droplet setup:
 
 1. Install Docker and Docker Compose on the droplet.
 2. Create the deploy directory (default `/opt/weather_ansessa_com`).
-3. Create a `.env` file in that directory with your production values (`OPENAI_API_KEY`, `STATION_URL`, etc.).
-4. Log in to GHCR on the droplet so it can pull images:
+3. Log in to GHCR on the droplet so it can pull images:
    ```bash
    # Create a GitHub PAT with read:packages scope, then:
    echo "YOUR_PAT" | docker login ghcr.io -u YOUR_GITHUB_USER --password-stdin
    ```
 
-GitHub configuration:
+GitHub configuration (all scoped to the `production` environment):
 
-1. Add repository secrets:
+1. Add **environment secrets**:
    - `DO_DROPLET_HOST`: droplet IP address or hostname.
    - `DO_DROPLET_USER`: SSH user used for deployment.
    - `DO_DROPLET_SSH_KEY`: private SSH key GitHub Actions uses to connect to the droplet.
-2. Optionally add repository variables:
-   - `DO_DEPLOY_PATH`: remote directory. Defaults to `/opt/weather_ansessa_com`.
-   - `DO_DROPLET_SSH_PORT`: SSH port. Defaults to `22`.
+   - `OPENAI_API_KEY`: OpenAI API key for weather summaries.
+   - `INGEST_SECRET` *(optional)*: bearer token to protect `/api/ingest`.
+2. Add **environment variables**:
+   - `STATION_URL`: base URL of the weather station.
+   - `STATION_LAT`: station latitude (default `45.71`).
+   - `STATION_LON`: station longitude (default `8.79`).
+   - `STATION_ALTITUDE`: station altitude in metres (default `330`).
+   - `INGEST_INTERVAL_MS`: ingestion frequency in ms (default `600000`).
+   - `OPENAI_MODEL`: model name (default `gpt-4o-mini`).
+   - `DO_DEPLOY_PATH` *(optional)*: remote directory (default `/opt/weather_ansessa_com`).
+   - `DO_DROPLET_SSH_PORT` *(optional)*: SSH port (default `22`).
 
 Operational notes:
 
-- No git checkout is needed on the droplet. The workflow copies `docker-compose.yml` and config files via SCP, then pulls the pre-built image from GHCR.
-- `data/` (Postgres volume) and `.env` persist on the droplet across deploys.
+- No git checkout or manual `.env` file is needed on the droplet. The workflow generates a `.env` from GitHub environment secrets/variables and SCPs it alongside `docker-compose.yml` and config files.
+- `data/` (Postgres volume) persists on the droplet across deploys.
 - Each deploy is also tagged with the commit SHA (`ghcr.io/sessa93/weather_ansessa_com:<sha>`) for rollback.
 - You can trigger the workflow manually from the GitHub Actions tab with `workflow_dispatch`.
 

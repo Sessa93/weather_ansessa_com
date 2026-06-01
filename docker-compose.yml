@@ -35,8 +35,10 @@ services:
       STATION_LON: ${STATION_LON:-8.79}
       STATION_ALTITUDE: ${STATION_ALTITUDE:-330}
       INGEST_INTERVAL_MS: ${INGEST_INTERVAL_MS:-600000}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
+      INGEST_SECRET: ${INGEST_SECRET:-}
       MQTT_HOST: mosquitto
-      # INGEST_SECRET: ${INGEST_SECRET:-}
     dns:
       - "8.8.8.8"
     extra_hosts:

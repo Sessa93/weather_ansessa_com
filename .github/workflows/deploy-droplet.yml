@@ -77,6 +77,39 @@ jobs:
           scp -P "$port" lib/schema.sql "$dest:$path/lib/schema.sql"
           scp -P "$port" services/mosquitto/mosquitto.conf "$dest:$path/services/mosquitto/mosquitto.conf"
 
+      - name: Deploy environment configuration
+        env:
+          APP_STATION_URL: ${{ vars.STATION_URL }}
+          APP_STATION_LAT: ${{ vars.STATION_LAT }}
+          APP_STATION_LON: ${{ vars.STATION_LON }}
+          APP_STATION_ALTITUDE: ${{ vars.STATION_ALTITUDE }}
+          APP_INGEST_INTERVAL_MS: ${{ vars.INGEST_INTERVAL_MS }}
+          APP_OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          APP_OPENAI_MODEL: ${{ vars.OPENAI_MODEL }}
+          APP_INGEST_SECRET: ${{ secrets.INGEST_SECRET }}
+        run: |
+          set -euo pipefail
+
+          port="${DROPLET_SSH_PORT:-22}"
+          dest="${DROPLET_USER}@${DROPLET_HOST}"
+          path="${DEPLOY_PATH:-/opt/weather_ansessa_com}"
+
+          # Build .env from GitHub environment secrets and variables
+          {
+            [ -n "${APP_STATION_URL}" ]          && echo "STATION_URL=${APP_STATION_URL}"
+            [ -n "${APP_STATION_LAT}" ]          && echo "STATION_LAT=${APP_STATION_LAT}"
+            [ -n "${APP_STATION_LON}" ]          && echo "STATION_LON=${APP_STATION_LON}"
+            [ -n "${APP_STATION_ALTITUDE}" ]     && echo "STATION_ALTITUDE=${APP_STATION_ALTITUDE}"
+            [ -n "${APP_INGEST_INTERVAL_MS}" ]   && echo "INGEST_INTERVAL_MS=${APP_INGEST_INTERVAL_MS}"
+            [ -n "${APP_OPENAI_API_KEY}" ]       && echo "OPENAI_API_KEY=${APP_OPENAI_API_KEY}"
+            [ -n "${APP_OPENAI_MODEL}" ]         && echo "OPENAI_MODEL=${APP_OPENAI_MODEL}"
+            [ -n "${APP_INGEST_SECRET}" ]        && echo "INGEST_SECRET=${APP_INGEST_SECRET}"
+            true
+          } > .env.deploy
+
+          scp -P "$port" .env.deploy "$dest:$path/.env"
+          rm -f .env.deploy
+
       - name: Pull new image and restart containers
         run: |
           set -euo pipefail
