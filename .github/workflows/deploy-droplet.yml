@@ -17,6 +17,7 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    environment: production
     env:
       DROPLET_HOST: ${{ secrets.DO_DROPLET_HOST }}
       DROPLET_USER: ${{ secrets.DO_DROPLET_USER }}
