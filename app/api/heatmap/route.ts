@@ -26,12 +26,12 @@ export async function GET(request: NextRequest) {
 
   const { rows } = await pool.query(
     `SELECT
-      timestamp::date AS date,
+      to_char(timestamp::date, 'YYYY-MM-DD') AS date,
       ROUND(${valueExpr}::numeric, 1)::float AS value
     FROM weather_readings
     WHERE timestamp >= NOW() - INTERVAL '365 days'
     GROUP BY timestamp::date
-    ORDER BY date ASC`,
+    ORDER BY timestamp::date ASC`,
   );
 
   return NextResponse.json(rows);
