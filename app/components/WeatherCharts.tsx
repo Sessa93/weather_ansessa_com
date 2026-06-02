@@ -60,23 +60,21 @@ export function TemperatureChart({
   data,
   long,
   compareData,
+  compareYear,
 }: {
   data: Reading[];
   long?: boolean;
   compareData?: Reading[];
+  compareYear?: number;
 }) {
   const { intlLocale, messages } = useLocale();
   const fmt = (label: ReactNode) =>
     long ? formatDate(label, intlLocale) : formatTime(label, intlLocale);
 
-  // Merge comparison data as prev_year_temp keyed by closest timestamp
-  const chartData = data.map((d, i) => {
-    const compare = compareData && compareData[i];
-    return {
-      ...d,
-      prev_year_temp: compare?.outside_temp ?? null,
-    };
-  });
+  const chartData = data.map((d, i) => ({
+    ...d,
+    prev_temp: compareData?.[i]?.outside_temp ?? null,
+  }));
 
   return (
     <div className="bg-slate-800 rounded-lg shadow-lg border border-slate-700 p-4 flex flex-col">
@@ -152,8 +150,8 @@ export function TemperatureChart({
           {compareData && compareData.length > 0 && (
             <Line
               type="monotone"
-              dataKey="prev_year_temp"
-              name={messages.charts.lastYear}
+              dataKey="prev_temp"
+              name={String(compareYear ?? messages.charts.lastYear)}
               stroke="#facc15"
               dot={false}
               strokeWidth={1.5}
@@ -230,19 +228,37 @@ export function WindChart({ data, long }: { data: Reading[]; long?: boolean }) {
   );
 }
 
-export function RainChart({ data, long }: { data: Reading[]; long?: boolean }) {
+export function RainChart({
+  data,
+  long,
+  compareData,
+  compareYear,
+}: {
+  data: Reading[];
+  long?: boolean;
+  compareData?: Reading[];
+  compareYear?: number;
+}) {
   const { intlLocale, messages } = useLocale();
   const fmt = (label: ReactNode) =>
     long ? formatDate(label, intlLocale) : formatTime(label, intlLocale);
-  const rainData = data.reduce<Array<Reading & { rain_total: number }>>(
-    (acc, reading) => {
-      const previousTotal = acc[acc.length - 1]?.rain_total ?? 0;
-      const nextTotal = previousTotal + (Number(reading.rain) || 0);
-      acc.push({ ...reading, rain_total: +nextTotal.toFixed(1) });
-      return acc;
-    },
-    [],
-  );
+
+  const rainData = data.reduce<
+    Array<Reading & { rain_total: number; prev_rain_total: number | null }>
+  >((acc, reading, i) => {
+    const previousTotal = acc[acc.length - 1]?.rain_total ?? 0;
+    const prevPreviousTotal = acc[acc.length - 1]?.prev_rain_total ?? 0;
+    const nextTotal = previousTotal + (Number(reading.rain) || 0);
+    const prevNextTotal = compareData
+      ? prevPreviousTotal + (Number(compareData[i]?.rain) || 0)
+      : null;
+    acc.push({
+      ...reading,
+      rain_total: +nextTotal.toFixed(1),
+      prev_rain_total: prevNextTotal !== null ? +prevNextTotal.toFixed(1) : null,
+    });
+    return acc;
+  }, []);
 
   return (
     <div className="bg-slate-800 rounded-lg shadow-lg border border-slate-700 p-4">
@@ -301,6 +317,19 @@ export function RainChart({ data, long }: { data: Reading[]; long?: boolean }) {
             strokeWidth={2}
             connectNulls
           />
+          {compareData && compareData.length > 0 && (
+            <Line
+              yAxisId="right"
+              type="monotone"
+              dataKey="prev_rain_total"
+              name={String(compareYear ?? messages.charts.lastYear)}
+              stroke="#facc15"
+              dot={false}
+              strokeWidth={1.5}
+              strokeDasharray="6 3"
+              connectNulls
+            />
+          )}
         </ComposedChart>
       </ResponsiveContainer>
     </div>
@@ -310,20 +339,30 @@ export function RainChart({ data, long }: { data: Reading[]; long?: boolean }) {
 export function BarometerChart({
   data,
   long,
+  compareData,
+  compareYear,
 }: {
   data: Reading[];
   long?: boolean;
+  compareData?: Reading[];
+  compareYear?: number;
 }) {
   const { intlLocale, messages } = useLocale();
   const fmt = (label: ReactNode) =>
     long ? formatDate(label, intlLocale) : formatTime(label, intlLocale);
+
+  const chartData = data.map((d, i) => ({
+    ...d,
+    prev_barometer: compareData?.[i]?.barometer ?? null,
+  }));
+
   return (
     <div className="bg-slate-800 rounded-lg shadow-lg border border-slate-700 p-4">
       <h3 className="text-sm font-semibold text-slate-300 mb-2">
         {messages.charts.barometer}
       </h3>
       <ResponsiveContainer width="100%" height={260}>
-        <AreaChart data={data}>
+        <ComposedChart data={chartData}>
           <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
           <XAxis
             dataKey="timestamp"
@@ -347,6 +386,12 @@ export function BarometerChart({
               color: "#e2e8f0",
             }}
           />
+          {compareData && compareData.length > 0 && (
+            <Legend
+              iconSize={10}
+              wrapperStyle={{ fontSize: 12, color: "#94a3b8" }}
+            />
+          )}
           <Area
             type="monotone"
             dataKey="barometer"
@@ -357,7 +402,19 @@ export function BarometerChart({
             strokeWidth={2}
             connectNulls
           />
-        </AreaChart>
+          {compareData && compareData.length > 0 && (
+            <Line
+              type="monotone"
+              dataKey="prev_barometer"
+              name={String(compareYear ?? messages.charts.lastYear)}
+              stroke="#facc15"
+              dot={false}
+              strokeWidth={1.5}
+              strokeDasharray="6 3"
+              connectNulls
+            />
+          )}
+        </ComposedChart>
       </ResponsiveContainer>
     </div>
   );
@@ -366,20 +423,30 @@ export function BarometerChart({
 export function HumidityChart({
   data,
   long,
+  compareData,
+  compareYear,
 }: {
   data: Reading[];
   long?: boolean;
+  compareData?: Reading[];
+  compareYear?: number;
 }) {
   const { intlLocale, messages } = useLocale();
   const fmt = (label: ReactNode) =>
     long ? formatDate(label, intlLocale) : formatTime(label, intlLocale);
+
+  const chartData = data.map((d, i) => ({
+    ...d,
+    prev_humidity: compareData?.[i]?.humidity ?? null,
+  }));
+
   return (
     <div className="bg-slate-800 rounded-lg shadow-lg border border-slate-700 p-4">
       <h3 className="text-sm font-semibold text-slate-300 mb-2">
         {messages.charts.humidity}
       </h3>
       <ResponsiveContainer width="100%" height={260}>
-        <AreaChart data={data}>
+        <ComposedChart data={chartData}>
           <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
           <XAxis
             dataKey="timestamp"
@@ -403,6 +470,12 @@ export function HumidityChart({
               color: "#e2e8f0",
             }}
           />
+          {compareData && compareData.length > 0 && (
+            <Legend
+              iconSize={10}
+              wrapperStyle={{ fontSize: 12, color: "#94a3b8" }}
+            />
+          )}
           <Area
             type="monotone"
             dataKey="humidity"
@@ -413,7 +486,19 @@ export function HumidityChart({
             strokeWidth={2}
             connectNulls
           />
-        </AreaChart>
+          {compareData && compareData.length > 0 && (
+            <Line
+              type="monotone"
+              dataKey="prev_humidity"
+              name={String(compareYear ?? messages.charts.lastYear)}
+              stroke="#facc15"
+              dot={false}
+              strokeWidth={1.5}
+              strokeDasharray="6 3"
+              connectNulls
+            />
+          )}
+        </ComposedChart>
       </ResponsiveContainer>
     </div>
   );

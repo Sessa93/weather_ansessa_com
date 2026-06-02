@@ -27,12 +27,15 @@ interface Reading {
   humidity: number;
 }
 
+const CURRENT_YEAR = new Date().getFullYear();
+const COMPARE_YEARS = Array.from({ length: 5 }, (_, i) => CURRENT_YEAR - 1 - i);
+
 export default function GraphsPage() {
   const { messages } = useLocale();
   const [range, setRange] = useState<Range>("day");
   const [readings, setReadings] = useState<Reading[]>([]);
   const [compareData, setCompareData] = useState<Reading[]>([]);
-  const [showCompare, setShowCompare] = useState(false);
+  const [compareYear, setCompareYear] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
 
   const ranges: { value: Range; label: string }[] = [
@@ -53,15 +56,15 @@ export default function GraphsPage() {
   }, [range]);
 
   useEffect(() => {
-    if (!showCompare) {
+    if (compareYear === null) {
       setCompareData([]);
       return;
     }
-    fetch(`/api/readings-compare?range=${range}`)
+    fetch(`/api/readings-compare?range=${range}&year=${compareYear}`)
       .then((r) => r.json())
       .then(setCompareData)
       .catch(() => setCompareData([]));
-  }, [range, showCompare]);
+  }, [range, compareYear]);
 
   const long = range !== "day";
 
@@ -71,7 +74,7 @@ export default function GraphsPage() {
         {messages.graphs.title}
       </h1>
 
-      {/* Range selector + export buttons */}
+      {/* Range selector + compare + export */}
       <div className="flex gap-1 flex-wrap items-center">
         {ranges.map((r) => (
           <button
@@ -89,17 +92,43 @@ export default function GraphsPage() {
             {r.label}
           </button>
         ))}
-        <div className="ml-auto flex gap-1">
-          <button
-            onClick={() => setShowCompare(!showCompare)}
-            className={`px-3 py-2 text-sm font-medium rounded transition-colors ${
-              showCompare
-                ? "bg-amber-600 text-white"
-                : "bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200 border border-slate-700"
-            }`}
-          >
-            {messages.graphs.compareLastYear}
-          </button>
+
+        <div className="ml-auto flex gap-1 flex-wrap items-center">
+          {/* Compare year pills */}
+          {compareYear !== null && (
+            <>
+              {COMPARE_YEARS.map((y) => (
+                <button
+                  key={y}
+                  onClick={() => setCompareYear(y)}
+                  className={`px-3 py-2 text-sm font-medium rounded transition-colors ${
+                    compareYear === y
+                      ? "bg-amber-600 text-white"
+                      : "bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200 border border-slate-700"
+                  }`}
+                >
+                  {y}
+                </button>
+              ))}
+              <button
+                onClick={() => setCompareYear(null)}
+                className="px-3 py-2 text-sm font-medium rounded bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200 border border-slate-700 transition-colors"
+                title="Close comparison"
+              >
+                ✕
+              </button>
+            </>
+          )}
+
+          {compareYear === null && (
+            <button
+              onClick={() => setCompareYear(CURRENT_YEAR - 1)}
+              className="px-3 py-2 text-sm font-medium rounded bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200 border border-slate-700 transition-colors"
+            >
+              {messages.graphs.compareLastYear}
+            </button>
+          )}
+
           <a
             href={`/api/export?range=${range}&format=csv`}
             download
@@ -122,7 +151,7 @@ export default function GraphsPage() {
           {[1, 2, 3, 4].map((i) => (
             <div
               key={i}
-              className="bg-white rounded-lg shadow p-4 h-[300px] animate-pulse"
+              className="bg-white rounded-lg shadow p-4 h-75 animate-pulse"
             >
               <div className="h-4 bg-zinc-200 rounded w-1/3 mb-4" />
               <div className="h-full bg-zinc-100 rounded" />
@@ -134,13 +163,29 @@ export default function GraphsPage() {
           <TemperatureChart
             data={readings}
             long={long}
-            compareData={showCompare ? compareData : undefined}
+            compareData={compareYear !== null ? compareData : undefined}
+            compareYear={compareYear ?? undefined}
           />
           <WindRose data={readings} />
-          <RainChart data={readings} long={long} />
-          <BarometerChart data={readings} long={long} />
+          <RainChart
+            data={readings}
+            long={long}
+            compareData={compareYear !== null ? compareData : undefined}
+            compareYear={compareYear ?? undefined}
+          />
+          <BarometerChart
+            data={readings}
+            long={long}
+            compareData={compareYear !== null ? compareData : undefined}
+            compareYear={compareYear ?? undefined}
+          />
           <div className="md:col-span-2">
-            <HumidityChart data={readings} long={long} />
+            <HumidityChart
+              data={readings}
+              long={long}
+              compareData={compareYear !== null ? compareData : undefined}
+              compareYear={compareYear ?? undefined}
+            />
           </div>
         </div>
       )}
