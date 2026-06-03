@@ -19,22 +19,16 @@ export const config = {
   stationLat: process.env.STATION_LAT ?? "45.71",
   stationLon: process.env.STATION_LON ?? "8.79",
 
-  // WhatsApp Cloud API
-  whatsappToken: required("WHATSAPP_TOKEN"),
-  whatsappPhoneNumberId: required("WHATSAPP_PHONE_NUMBER_ID"),
-  whatsappVerifyToken: required("WHATSAPP_VERIFY_TOKEN"),
-  whatsappApiVersion: process.env.WHATSAPP_API_VERSION ?? "v21.0",
+  // Twilio WhatsApp
+  twilioAccountSid: required("TWILIO_ACCOUNT_SID"),
+  twilioAuthToken: required("TWILIO_AUTH_TOKEN"),
+  twilioWhatsappFrom: required("TWILIO_WHATSAPP_FROM"), // e.g. whatsapp:+14155238886
 
   // Daily forecast broadcast
   dailySummaryCron: process.env.DAILY_SUMMARY_CRON ?? "0 8 * * *",
   timezone: process.env.TZ ?? "Europe/Rome",
-  // Comma-separated phone numbers in international format without "+" (e.g. 39333...)
+  // Comma-separated phone numbers in E.164 format (e.g. +39333...)
   dailyRecipients: (process.env.DAILY_SUMMARY_RECIPIENTS ?? "")
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean),
-  // Groups to send daily summary to (comma-separated group JIDs)
-  dailyGroupRecipients: (process.env.DAILY_SUMMARY_GROUPS ?? "")
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean),

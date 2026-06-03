@@ -75,6 +75,37 @@ jobs:
 
           scp -P "$port" docker-compose.yml "$dest:$path/docker-compose.yml"
 
+      - name: Deploy WhatsApp bot secrets
+        env:
+          TWILIO_SID: ${{ secrets.TWILIO_ACCOUNT_SID }}
+          TWILIO_TOKEN: ${{ secrets.TWILIO_AUTH_TOKEN }}
+          TWILIO_FROM: ${{ secrets.TWILIO_WHATSAPP_FROM }}
+          WA_OPENAI_KEY: ${{ secrets.OPENAI_API_KEY }}
+          WA_OPENAI_MODEL: ${{ vars.OPENAI_MODEL }}
+          WA_DAILY_RECIPIENTS: ${{ vars.DAILY_SUMMARY_RECIPIENTS }}
+        run: |
+          set -euo pipefail
+
+          port="${DROPLET_SSH_PORT:-22}"
+          dest="${DROPLET_USER}@${DROPLET_HOST}"
+          path="${DEPLOY_PATH:-/home/root/weather_ansessa_com}"
+
+          # Build a snippet with the WhatsApp bot env vars
+          {
+            [ -n "${TWILIO_SID}" ]           && echo "TWILIO_ACCOUNT_SID=${TWILIO_SID}"
+            [ -n "${TWILIO_TOKEN}" ]         && echo "TWILIO_AUTH_TOKEN=${TWILIO_TOKEN}"
+            [ -n "${TWILIO_FROM}" ]          && echo "TWILIO_WHATSAPP_FROM=${TWILIO_FROM}"
+            [ -n "${WA_OPENAI_KEY}" ]        && echo "OPENAI_API_KEY=${WA_OPENAI_KEY}"
+            [ -n "${WA_OPENAI_MODEL}" ]      && echo "OPENAI_MODEL=${WA_OPENAI_MODEL}"
+            [ -n "${WA_DAILY_RECIPIENTS}" ]  && echo "DAILY_SUMMARY_RECIPIENTS=${WA_DAILY_RECIPIENTS}"
+            true
+          } > .env.wa
+
+          # Merge into the existing .env on the droplet (update existing keys, append new ones)
+          scp -P "$port" .env.wa "$dest:$path/.env.wa"
+          ssh -p "$port" "$dest" "cd $path && touch .env && while IFS='=' read -r key val; do sed -i \"/^\${key}=/d\" .env; done < .env.wa && cat .env.wa >> .env && rm .env.wa"
+          rm -f .env.wa
+
       - name: Pull and restart whatsapp-bot
         run: |
           set -euo pipefail

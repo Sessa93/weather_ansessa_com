@@ -1,39 +1,21 @@
 import { config } from "./config.js";
+import twilio from "twilio";
 
-const endpoint =
-  `https://graph.facebook.com/${config.whatsappApiVersion}` +
-  `/${config.whatsappPhoneNumberId}/messages`;
+const client = twilio(config.twilioAccountSid, config.twilioAuthToken);
 
-/** Send a plain text message to a WhatsApp user or group via the Cloud API. */
-export async function sendText(
-  to: string,
-  body: string,
-  isGroup = false,
-): Promise<void> {
+/** Send a plain text message to a WhatsApp number via Twilio. */
+export async function sendText(to: string, body: string): Promise<void> {
   // WhatsApp text bodies are capped at 4096 chars.
   const text = body.length > 4096 ? body.slice(0, 4093) + "…" : body;
 
-  const payload: Record<string, unknown> = {
-    messaging_product: "whatsapp",
-    to,
-    type: "text",
-    text: { body: text },
-  };
-  if (isGroup) {
-    payload.recipient_type = "group";
-  }
+  // Ensure the "to" number has the whatsapp: prefix.
+  const toWhatsapp = to.startsWith("whatsapp:") ? to : `whatsapp:${to}`;
 
-  const res = await fetch(endpoint, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${config.whatsappToken}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
+  const msg = await client.messages.create({
+    from: config.twilioWhatsappFrom,
+    to: toWhatsapp,
+    body: text,
   });
 
-  if (!res.ok) {
-    const detail = await res.text().catch(() => "");
-    throw new Error(`WhatsApp send failed (${res.status}): ${detail}`);
-  }
+  console.log(`[twilio] Message ${msg.sid} sent to ${toWhatsapp}`);
 }
