@@ -19,12 +19,7 @@ app.post("/webhook", (req, res) => {
   const url = `${req.protocol}://${req.get("host")}${req.originalUrl}`;
   if (
     !signature ||
-    !twilio.validateRequest(
-      config.twilioAuthToken,
-      signature,
-      url,
-      req.body,
-    )
+    !twilio.validateRequest(config.twilioAuthToken, signature, url, req.body)
   ) {
     console.warn("[webhook] Invalid Twilio signature");
     res.sendStatus(403);
