@@ -1,0 +1,66 @@
+name: Deploy Mosquitto
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "services/mosquitto/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-mosquitto-deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      DROPLET_HOST: ${{ secrets.DO_DROPLET_HOST }}
+      DROPLET_USER: ${{ secrets.DO_DROPLET_USER }}
+      DROPLET_SSH_PORT: ${{ vars.DO_DROPLET_SSH_PORT }}
+      DEPLOY_PATH: ${{ vars.DO_DEPLOY_PATH }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure SSH
+        env:
+          SSH_KEY: ${{ secrets.DO_DROPLET_SSH_KEY }}
+        run: |
+          set -euo pipefail
+
+          : "${DROPLET_HOST:?Missing secret DO_DROPLET_HOST}"
+          : "${DROPLET_USER:?Missing secret DO_DROPLET_USER}"
+          : "${SSH_KEY:?Missing secret DO_DROPLET_SSH_KEY}"
+
+          port="${DROPLET_SSH_PORT:-22}"
+
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -p "$port" -H "$DROPLET_HOST" >> ~/.ssh/known_hosts
+
+      - name: Copy mosquitto config
+        run: |
+          set -euo pipefail
+
+          port="${DROPLET_SSH_PORT:-22}"
+          dest="${DROPLET_USER}@${DROPLET_HOST}"
+          path="${DEPLOY_PATH:-/home/root/weather_ansessa_com}"
+
+          ssh -p "$port" "$dest" "mkdir -p $path/services/mosquitto"
+          scp -P "$port" services/mosquitto/mosquitto.conf "$dest:$path/services/mosquitto/mosquitto.conf"
+
+      - name: Restart mosquitto
+        run: |
+          set -euo pipefail
+
+          port="${DROPLET_SSH_PORT:-22}"
+          dest="${DROPLET_USER}@${DROPLET_HOST}"
+          path="${DEPLOY_PATH:-/home/root/weather_ansessa_com}"
+
+          ssh -p "$port" "$dest" "cd $path && docker compose up -d --force-recreate mosquitto"

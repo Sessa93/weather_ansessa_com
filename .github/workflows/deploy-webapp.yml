@@ -1,9 +1,19 @@
-name: Deploy to DigitalOcean Droplet
+name: Deploy Web App
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
+    paths:
+      - "app/**"
+      - "lib/**"
+      - "public/**"
+      - "Dockerfile"
+      - "docker-compose.yml"
+      - "next.config.ts"
+      - "package.json"
+      - "tsconfig.json"
+      - "postcss.config.mjs"
+      - "instrumentation.ts"
   workflow_dispatch:
 
 permissions:
@@ -11,7 +21,7 @@ permissions:
   packages: write
 
 concurrency:
-  group: production-droplet-deploy
+  group: production-webapp-deploy
   cancel-in-progress: true
 
 jobs:
