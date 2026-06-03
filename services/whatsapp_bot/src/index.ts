@@ -80,7 +80,9 @@ if (cron.validate(config.dailySummaryCron)) {
     `[cron] Daily summary scheduled: "${config.dailySummaryCron}" (${config.timezone})`,
   );
 } else {
-  console.error(`[cron] Invalid DAILY_SUMMARY_CRON: ${config.dailySummaryCron}`);
+  console.error(
+    `[cron] Invalid DAILY_SUMMARY_CRON: ${config.dailySummaryCron}`,
+  );
 }
 
 app.listen(config.port, () => {

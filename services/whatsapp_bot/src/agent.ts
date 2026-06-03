@@ -50,7 +50,10 @@ function getConversation(sender: string): Conversation {
  * Run the tool-calling loop for one inbound user message and return the reply
  * text. Per-sender history is kept in memory so follow-up questions work.
  */
-export async function answer(sender: string, userText: string): Promise<string> {
+export async function answer(
+  sender: string,
+  userText: string,
+): Promise<string> {
   const convo = getConversation(sender);
   convo.lastActive = Date.now();
 
@@ -80,7 +83,9 @@ export async function answer(sender: string, userText: string): Promise<string> 
     working.push(msg);
 
     if (!msg.tool_calls?.length) {
-      const reply = msg.content?.trim() || "Scusa, non sono riuscito a produrre una risposta.";
+      const reply =
+        msg.content?.trim() ||
+        "Scusa, non sono riuscito a produrre una risposta.";
       convo.messages.push({ role: "assistant", content: reply });
       return reply;
     }

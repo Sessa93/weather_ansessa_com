@@ -36,8 +36,13 @@ async function buildSummary(): Promise<string> {
 
 /** Compose the daily summary and broadcast it to all configured recipients and groups. */
 export async function sendDailySummary(): Promise<void> {
-  if (config.dailyRecipients.length === 0 && config.dailyGroupRecipients.length === 0) {
-    console.log("[daily] No recipients or groups configured; skipping broadcast.");
+  if (
+    config.dailyRecipients.length === 0 &&
+    config.dailyGroupRecipients.length === 0
+  ) {
+    console.log(
+      "[daily] No recipients or groups configured; skipping broadcast.",
+    );
     return;
   }
 
