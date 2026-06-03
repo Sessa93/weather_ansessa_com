@@ -55,6 +55,16 @@ jobs:
           ssh -p "$port" "$dest" "mkdir -p $path/services/mosquitto"
           scp -P "$port" services/mosquitto/mosquitto.conf "$dest:$path/services/mosquitto/mosquitto.conf"
 
+      - name: Sync docker-compose.yml
+        run: |
+          set -euo pipefail
+
+          port="${DROPLET_SSH_PORT:-22}"
+          dest="${DROPLET_USER}@${DROPLET_HOST}"
+          path="${DEPLOY_PATH:-/home/root/weather_ansessa_com}"
+
+          scp -P "$port" docker-compose.yml "$dest:$path/docker-compose.yml"
+
       - name: Restart mosquitto
         run: |
           set -euo pipefail

@@ -65,6 +65,16 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -p "$port" -H "$DROPLET_HOST" >> ~/.ssh/known_hosts
 
+      - name: Sync docker-compose.yml
+        run: |
+          set -euo pipefail
+
+          port="${DROPLET_SSH_PORT:-22}"
+          dest="${DROPLET_USER}@${DROPLET_HOST}"
+          path="${DEPLOY_PATH:-/home/root/weather_ansessa_com}"
+
+          scp -P "$port" docker-compose.yml "$dest:$path/docker-compose.yml"
+
       - name: Pull and restart udp-listener
         run: |
           set -euo pipefail
