@@ -36,25 +36,37 @@ app.post("/webhook", (req, res) => {
 
     const from: string = message.from;
     const text: string = message.text.body;
-    console.log(`[in] ${from}: ${text}`);
+
+    // Group messages include a group_id; reply goes to the group.
+    const groupId: string | undefined = message.group_id;
+    const replyTo = groupId ?? from;
+    const isGroup = !!groupId;
+
+    console.log(`[in] ${from}${isGroup ? ` (group ${groupId})` : ""}: ${text}`);
 
     // Process asynchronously so we never block the webhook response.
-    void handleMessage(from, text);
+    void handleMessage(replyTo, from, text, isGroup);
   } catch (err) {
     console.error("[webhook] Parse error:", err);
   }
 });
 
-async function handleMessage(from: string, text: string): Promise<void> {
+async function handleMessage(
+  replyTo: string,
+  sender: string,
+  text: string,
+  isGroup: boolean,
+): Promise<void> {
   try {
-    const reply = await answer(from, text);
-    await sendText(from, reply);
-    console.log(`[out] ${from}: ${reply}`);
+    const reply = await answer(replyTo, text);
+    await sendText(replyTo, reply, isGroup);
+    console.log(`[out] ${replyTo}: ${reply}`);
   } catch (err) {
-    console.error(`[handle] Error for ${from}:`, err);
+    console.error(`[handle] Error for ${replyTo}:`, err);
     await sendText(
-      from,
-      "Sorry, something went wrong fetching the weather data.",
+      replyTo,
+      "Scusa, si è verificato un errore nel recupero dei dati meteo.",
+      isGroup,
     ).catch(() => {});
   }
 }

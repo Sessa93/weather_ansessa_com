@@ -33,7 +33,11 @@ export const config = {
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean),
-  dailyLanguage: process.env.DAILY_SUMMARY_LANGUAGE ?? "English",
+  // Groups to send daily summary to (comma-separated group JIDs)
+  dailyGroupRecipients: (process.env.DAILY_SUMMARY_GROUPS ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean),
 
   stationName: process.env.STATION_NAME ?? "Jerago con Orago, Italy",
 };

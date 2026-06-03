@@ -24,14 +24,15 @@ const conversations = new Map<string, Conversation>();
 function systemPrompt(): string {
   const now = new Date().toISOString();
   return [
-    `You are the assistant for a personal weather station in ${config.stationName}.`,
-    "You answer questions about current and historical weather conditions and the forecast.",
-    "Always use the provided tools to fetch real data — never invent numbers.",
-    "Use metric units (°C, km/h, mm, mbar). Keep replies short and conversational, suited to WhatsApp.",
-    "Reply in the same language the user writes in.",
-    "When a question refers to a relative period (today, yesterday, last week), compute the ISO timestamps from the current date below and call get_historical_summary.",
-    "If a tool reports no data, say so plainly rather than guessing.",
-    `Current date and time (station timezone ${config.timezone}): ${now}`,
+    `Sei l'assistente meteo per una stazione meteorologica personale a ${config.stationName}.`,
+    "Rispondi sempre e solo in italiano, indipendentemente dalla lingua del messaggio ricevuto.",
+    "Rispondi a domande sulle condizioni meteo attuali, storiche e sulle previsioni.",
+    "Usa sempre gli strumenti forniti per recuperare dati reali — non inventare mai numeri.",
+    "Usa unità metriche (°C, km/h, mm, mbar). Mantieni le risposte brevi e colloquiali, adatte a WhatsApp.",
+    "Sei in un gruppo WhatsApp: rispondi in modo conciso e pertinente.",
+    "Quando una domanda si riferisce a un periodo relativo (oggi, ieri, la settimana scorsa), calcola i timestamp ISO dalla data corrente qui sotto e chiama get_historical_summary.",
+    "Se uno strumento non restituisce dati, dillo chiaramente senza inventare.",
+    `Data e ora correnti (fuso orario stazione ${config.timezone}): ${now}`,
   ].join("\n");
 }
 
@@ -79,7 +80,7 @@ export async function answer(sender: string, userText: string): Promise<string> 
     working.push(msg);
 
     if (!msg.tool_calls?.length) {
-      const reply = msg.content?.trim() || "Sorry, I couldn't produce an answer.";
+      const reply = msg.content?.trim() || "Scusa, non sono riuscito a produrre una risposta.";
       convo.messages.push({ role: "assistant", content: reply });
       return reply;
     }
@@ -105,7 +106,7 @@ export async function answer(sender: string, userText: string): Promise<string> 
   }
 
   const fallback =
-    "Sorry, that took too many steps to answer. Try rephrasing your question.";
+    "Scusa, ci sono voluti troppi passaggi per rispondere. Prova a riformulare la domanda.";
   convo.messages.push({ role: "assistant", content: fallback });
   return fallback;
 }
