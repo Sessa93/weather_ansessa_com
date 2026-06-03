@@ -103,5 +103,32 @@ services:
     ports:
       - "22222:22222/udp"
 
+  whatsapp-bot:
+    build: ./services/whatsapp_bot
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "${WHATSAPP_BOT_PORT:-8084}:8080"
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/weather
+      STATION_ID: ${STATION_ID:-jerago}
+      STATION_NAME: ${STATION_NAME:-Jerago con Orago, Italy}
+      STATION_LAT: ${STATION_LAT:-45.71}
+      STATION_LON: ${STATION_LON:-8.79}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4.1}
+      WHATSAPP_TOKEN: ${WHATSAPP_TOKEN:-}
+      WHATSAPP_PHONE_NUMBER_ID: ${WHATSAPP_PHONE_NUMBER_ID:-}
+      WHATSAPP_VERIFY_TOKEN: ${WHATSAPP_VERIFY_TOKEN:-}
+      WHATSAPP_API_VERSION: ${WHATSAPP_API_VERSION:-v21.0}
+      DAILY_SUMMARY_CRON: ${DAILY_SUMMARY_CRON:-0 8 * * *}
+      DAILY_SUMMARY_RECIPIENTS: ${DAILY_SUMMARY_RECIPIENTS:-}
+      DAILY_SUMMARY_LANGUAGE: ${DAILY_SUMMARY_LANGUAGE:-English}
+      TZ: ${TZ:-Europe/Rome}
+    dns:
+      - "8.8.8.8"
+
 volumes:
   pgdata:
