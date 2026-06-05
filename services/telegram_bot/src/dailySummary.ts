@@ -1,7 +1,7 @@
 import OpenAI from "openai";
 import { config } from "./config.js";
 import { fetchForecast } from "./forecast.js";
-import { sendText } from "./whatsapp.js";
+import { sendText } from "./telegram.js";
 
 const openai = new OpenAI({ apiKey: config.openaiApiKey });
 
@@ -34,10 +34,10 @@ async function buildSummary(): Promise<string> {
   );
 }
 
-/** Compose the daily summary and broadcast it to all configured recipients and groups. */
+/** Compose the daily summary and broadcast it to all configured chat IDs. */
 export async function sendDailySummary(): Promise<void> {
-  if (config.dailyRecipients.length === 0) {
-    console.log("[daily] No recipients configured; skipping broadcast.");
+  if (config.dailyChatIds.length === 0) {
+    console.log("[daily] No chat IDs configured; skipping broadcast.");
     return;
   }
 
@@ -49,12 +49,12 @@ export async function sendDailySummary(): Promise<void> {
     return;
   }
 
-  for (const to of config.dailyRecipients) {
+  for (const chatId of config.dailyChatIds) {
     try {
-      await sendText(to, summary);
-      console.log(`[daily] Sent summary to ${to}`);
+      await sendText(chatId, summary);
+      console.log(`[daily] Sent summary to chat ${chatId}`);
     } catch (err) {
-      console.error(`[daily] Failed to send to ${to}:`, err);
+      console.error(`[daily] Failed to send to chat ${chatId}:`, err);
     }
   }
 }

@@ -1,4 +1,4 @@
-/** Centralised environment configuration for the WhatsApp bot. */
+/** Centralised environment configuration for the Telegram bot. */
 
 function required(name: string): string {
   const v = process.env[name];
@@ -19,16 +19,14 @@ export const config = {
   stationLat: process.env.STATION_LAT ?? "45.71",
   stationLon: process.env.STATION_LON ?? "8.79",
 
-  // Twilio WhatsApp
-  twilioAccountSid: required("TWILIO_ACCOUNT_SID"),
-  twilioAuthToken: required("TWILIO_AUTH_TOKEN"),
-  twilioWhatsappFrom: required("TWILIO_WHATSAPP_FROM"), // e.g. whatsapp:+14155238886
+  // Telegram
+  telegramBotToken: required("TELEGRAM_BOT_TOKEN"),
 
   // Daily forecast broadcast
   dailySummaryCron: process.env.DAILY_SUMMARY_CRON ?? "0 8 * * *",
   timezone: process.env.TZ ?? "Europe/Rome",
-  // Comma-separated phone numbers in E.164 format (e.g. +39333...)
-  dailyRecipients: (process.env.DAILY_SUMMARY_RECIPIENTS ?? "")
+  // Comma-separated Telegram chat IDs (numeric) to receive the daily summary
+  dailyChatIds: (process.env.DAILY_SUMMARY_CHAT_IDS ?? "")
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean),
