@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
     `SELECT
        EXTRACT(MONTH FROM timestamp)::int AS month,
        ROUND(AVG(outside_temp)::numeric, 1)::float AS avg_temp,
-       ROUND(SUM(rain) / NULLIF(COUNT(DISTINCT EXTRACT(YEAR FROM timestamp)), 0)::numeric, 1)::float AS avg_rain,
+       ROUND((SUM(rain) / NULLIF(COUNT(DISTINCT EXTRACT(YEAR FROM timestamp)), 0))::numeric, 1)::float AS avg_rain,
        ROUND(AVG(wind_speed)::numeric, 1)::float AS avg_wind
      FROM weather_readings
      WHERE EXTRACT(YEAR FROM timestamp) < $1

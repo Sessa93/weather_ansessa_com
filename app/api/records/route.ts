@@ -93,9 +93,15 @@ const TZ = process.env.TZ ?? "Europe/Rome";
 
 export async function GET() {
   const [today, month, year, allTimeResult, monthlyRain] = await Promise.all([
-    getSnapshot(`(timestamp AT TIME ZONE '${TZ}')::date = (NOW() AT TIME ZONE '${TZ}')::date`),
-    getSnapshot(`timestamp >= DATE_TRUNC('month', NOW() AT TIME ZONE '${TZ}') AT TIME ZONE '${TZ}'`),
-    getSnapshot(`timestamp >= DATE_TRUNC('year', NOW() AT TIME ZONE '${TZ}') AT TIME ZONE '${TZ}'`),
+    getSnapshot(
+      `(timestamp AT TIME ZONE '${TZ}')::date = (NOW() AT TIME ZONE '${TZ}')::date`,
+    ),
+    getSnapshot(
+      `timestamp >= DATE_TRUNC('month', NOW() AT TIME ZONE '${TZ}') AT TIME ZONE '${TZ}'`,
+    ),
+    getSnapshot(
+      `timestamp >= DATE_TRUNC('year', NOW() AT TIME ZONE '${TZ}') AT TIME ZONE '${TZ}'`,
+    ),
     pool.query(`
     SELECT
       'highest_temp' as key, MAX(outside_temp) as value,
