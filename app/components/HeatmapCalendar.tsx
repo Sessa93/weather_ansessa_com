@@ -167,69 +167,69 @@ export default function HeatmapCalendar() {
       </div>
       <div className="overflow-x-auto relative">
         {mounted && (
-        <svg
-          viewBox={`0 0 ${svgW} ${svgH}`}
-          className="w-full"
-          style={{ minHeight: svgH, maxHeight: svgH * 1.5 }}
-          preserveAspectRatio="xMinYMid meet"
-        >
-          {/* Month labels */}
-          {monthLabels.map((m, i) => (
-            <text
-              key={i}
-              x={30 + m.week * TOTAL}
-              y={10}
-              className="fill-slate-500 text-[9px]"
-            >
-              {m.label}
-            </text>
-          ))}
-          {/* Day labels */}
-          {["M", "W", "F"].map((label, i) => (
-            <text
-              key={label}
-              x={0}
-              y={20 + [1, 3, 5][i] * TOTAL + CELL / 2}
-              dominantBaseline="central"
-              className="fill-slate-500 text-[9px]"
-            >
-              {label}
-            </text>
-          ))}
-          {/* Cells */}
-          {grid.map((cell, i) => (
-            <rect
-              key={i}
-              x={30 + cell.week * TOTAL}
-              y={15 + cell.day * TOTAL}
-              width={CELL}
-              height={CELL}
-              rx={2}
-              fill={
-                cell.value !== null
-                  ? getColor(cell.value, min, max, metric)
-                  : "#1e293b"
-              }
-              stroke="#0f172a"
-              strokeWidth={1}
-              className="cursor-pointer"
-              onMouseEnter={(e) => {
-                if (cell.value !== null) {
-                  const rect = (
-                    e.target as SVGRectElement
-                  ).getBoundingClientRect();
-                  setTooltip({
-                    x: rect.x + rect.width / 2,
-                    y: rect.y,
-                    date: cell.date,
-                    value: cell.value,
-                  });
+          <svg
+            viewBox={`0 0 ${svgW} ${svgH}`}
+            className="w-full"
+            style={{ minHeight: svgH, maxHeight: svgH * 1.5 }}
+            preserveAspectRatio="xMinYMid meet"
+          >
+            {/* Month labels */}
+            {monthLabels.map((m, i) => (
+              <text
+                key={i}
+                x={30 + m.week * TOTAL}
+                y={10}
+                className="fill-slate-500 text-[9px]"
+              >
+                {m.label}
+              </text>
+            ))}
+            {/* Day labels */}
+            {["M", "W", "F"].map((label, i) => (
+              <text
+                key={label}
+                x={0}
+                y={20 + [1, 3, 5][i] * TOTAL + CELL / 2}
+                dominantBaseline="central"
+                className="fill-slate-500 text-[9px]"
+              >
+                {label}
+              </text>
+            ))}
+            {/* Cells */}
+            {grid.map((cell, i) => (
+              <rect
+                key={i}
+                x={30 + cell.week * TOTAL}
+                y={15 + cell.day * TOTAL}
+                width={CELL}
+                height={CELL}
+                rx={2}
+                fill={
+                  cell.value !== null
+                    ? getColor(cell.value, min, max, metric)
+                    : "#1e293b"
                 }
-              }}
-              onMouseLeave={() => setTooltip(null)}
-            />
-          ))}
-        </svg>
+                stroke="#0f172a"
+                strokeWidth={1}
+                className="cursor-pointer"
+                onMouseEnter={(e) => {
+                  if (cell.value !== null) {
+                    const rect = (
+                      e.target as SVGRectElement
+                    ).getBoundingClientRect();
+                    setTooltip({
+                      x: rect.x + rect.width / 2,
+                      y: rect.y,
+                      date: cell.date,
+                      value: cell.value,
+                    });
+                  }
+                }}
+                onMouseLeave={() => setTooltip(null)}
+              />
+            ))}
+          </svg>
         )}
         {tooltip && (
           <div

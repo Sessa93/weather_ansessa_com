@@ -28,12 +28,15 @@ export async function register() {
         );
       } catch (err) {
         consecutiveFailures++;
-        const suppressLog = consecutiveFailures > 3 && consecutiveFailures % 6 !== 0;
+        const suppressLog =
+          consecutiveFailures > 3 && consecutiveFailures % 6 !== 0;
         if (!suppressLog) {
           console.error(
             "[ingest] Failed:",
             err instanceof Error ? err.message : err,
-            consecutiveFailures > 1 ? `(${consecutiveFailures} consecutive failures)` : "",
+            consecutiveFailures > 1
+              ? `(${consecutiveFailures} consecutive failures)`
+              : "",
           );
         }
       }
