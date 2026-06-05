@@ -12,6 +12,7 @@ export default function Navbar() {
     { href: "/", label: messages.nav.home },
     { href: "/graphs", label: messages.nav.graphs },
     { href: "/records", label: messages.nav.records },
+    { href: "/reports", label: messages.nav.reports },
     { href: "/about", label: messages.nav.about },
   ];
 

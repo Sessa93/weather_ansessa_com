@@ -4,6 +4,7 @@ import { config } from "./config.js";
 import { answer } from "./agent.js";
 import { bot, sendText } from "./telegram.js";
 import { sendDailySummary } from "./dailySummary.js";
+import { checkAndBroadcastAlerts } from "./alertChecker.js";
 
 const app = express();
 app.use(express.json());
@@ -49,6 +50,12 @@ if (cron.validate(config.dailySummaryCron)) {
     `[cron] Invalid DAILY_SUMMARY_CRON: ${config.dailySummaryCron}`,
   );
 }
+
+// --- Alert checker every 5 minutes ---
+cron.schedule("*/5 * * * *", () => void checkAndBroadcastAlerts(), {
+  timezone: config.timezone,
+});
+console.log("[cron] Alert checker scheduled: every 5 minutes");
 
 // Start the express health server and the Telegram bot.
 app.listen(config.port, () => {

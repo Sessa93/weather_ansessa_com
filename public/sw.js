@@ -21,6 +21,35 @@ self.addEventListener("activate", (event) => {
   self.clients.claim();
 });
 
+// Handle weather alert notifications from the app
+self.addEventListener("message", (event) => {
+  if (event.data?.type === "WEATHER_ALERT") {
+    const { title, body, tag } = event.data;
+    self.registration.showNotification(title, {
+      body,
+      tag, // prevents duplicates for same alert type
+      icon: "/icons/icon-192.png",
+      badge: "/icons/icon-192.png",
+      vibrate: [200, 100, 200],
+      renotify: false,
+    });
+  }
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  event.waitUntil(
+    self.clients
+      .matchAll({ type: "window", includeUncontrolled: true })
+      .then((clients) => {
+        if (clients.length > 0) {
+          return clients[0].focus();
+        }
+        return self.clients.openWindow("/");
+      }),
+  );
+});
+
 self.addEventListener("fetch", (event) => {
   const { request } = event;
   const url = new URL(request.url);
