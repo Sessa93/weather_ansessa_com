@@ -56,12 +56,17 @@ export default function HeatmapCalendar() {
   const { messages, intlLocale } = useLocale();
   const [data, setData] = useState<DayData[]>([]);
   const [metric, setMetric] = useState<Metric>("avg_temp");
+  const [mounted, setMounted] = useState(false);
   const [tooltip, setTooltip] = useState<{
     x: number;
     y: number;
     date: string;
     value: number;
   } | null>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     fetch(`/api/heatmap?metric=${metric}`)
@@ -161,6 +166,7 @@ export default function HeatmapCalendar() {
         </div>
       </div>
       <div className="overflow-x-auto relative">
+        {mounted && (
         <svg
           viewBox={`0 0 ${svgW} ${svgH}`}
           className="w-full"
@@ -224,6 +230,7 @@ export default function HeatmapCalendar() {
             />
           ))}
         </svg>
+        )}
         {tooltip && (
           <div
             className="fixed z-50 pointer-events-none bg-slate-900 border border-slate-600 rounded px-2 py-1 text-xs text-slate-200 shadow-lg"
