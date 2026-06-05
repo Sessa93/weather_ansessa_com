@@ -23,9 +23,9 @@ export const toolDefinitions: OpenAI.Chat.Completions.ChatCompletionTool[] = [
       description:
         "Get aggregated weather statistics (min/max/avg temperature and humidity, " +
         "total rain, peak wind gust, pressure range) over a time range. Use for " +
-        "questions about the past such as 'yesterday', 'last week', or a specific date. " +
-        "Compute the ISO 8601 start/end timestamps yourself from the current date provided " +
-        "in the system prompt. The range is inclusive of start, exclusive of end.",
+        "questions about today, yesterday, last week, a specific date, or any time period. " +
+        "Always include the UTC offset in timestamps (e.g. 2026-06-05T00:00:00+02:00). " +
+        "The range is inclusive of start, exclusive of end.",
       parameters: {
         type: "object",
         properties: {
