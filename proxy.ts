@@ -1,9 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-export const runtime = "nodejs";
-
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const start = Date.now();
   const response = NextResponse.next();
   const duration = Date.now() - start;
