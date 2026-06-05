@@ -45,7 +45,7 @@ export async function GET() {
       ROUND(MIN(wind_chill)::numeric, 1) AS wind_chill_min,
       ROUND(MAX(heat_index)::numeric, 1) AS heat_index_max
     FROM weather_readings
-    WHERE timestamp::date = CURRENT_DATE
+    WHERE (timestamp AT TIME ZONE '${process.env.TZ ?? "Europe/Rome"}')::date = (NOW() AT TIME ZONE '${process.env.TZ ?? "Europe/Rome"}')::date
   `);
 
   const stats = rows[0];

@@ -77,7 +77,7 @@ export async function GET(request: NextRequest) {
       outside_temp, dew_point, wind_chill, heat_index,
       wind_speed, wind_gust, barometer, rain, rain_rate, humidity
     FROM weather_readings
-    WHERE timestamp::date = (CURRENT_DATE - make_interval(years => $1::int))::date
+    WHERE (timestamp AT TIME ZONE '${process.env.TZ ?? "Europe/Rome"}')::date = ((NOW() AT TIME ZONE '${process.env.TZ ?? "Europe/Rome"}')::date - make_interval(years => $1::int))
     ORDER BY timestamp ASC`,
     [offsetYears],
   );

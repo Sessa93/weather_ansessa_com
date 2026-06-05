@@ -86,7 +86,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(rows);
   }
 
-  // Day range: return all rows for today (since midnight)
+  // Day range: return all rows for today (since midnight local time)
+  const tz = process.env.TZ ?? "Europe/Rome";
   const stationFilter = useStation ? "AND station_id = $1" : "";
   const params = useStation ? [stationId] : [];
 
@@ -95,7 +96,7 @@ export async function GET(request: NextRequest) {
       timestamp, outside_temp, dew_point, wind_chill, heat_index,
       wind_speed, wind_gust, wind_dir, barometer, rain, rain_rate, humidity
     FROM weather_readings
-    WHERE timestamp::date = CURRENT_DATE
+    WHERE (timestamp AT TIME ZONE '${tz}')::date = (NOW() AT TIME ZONE '${tz}')::date
       ${stationFilter}
     ORDER BY timestamp ASC`,
     params,

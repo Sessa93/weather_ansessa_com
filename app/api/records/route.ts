@@ -89,11 +89,13 @@ async function getSnapshot(whereClause: string) {
   return rows[0];
 }
 
+const TZ = process.env.TZ ?? "Europe/Rome";
+
 export async function GET() {
   const [today, month, year, allTimeResult, monthlyRain] = await Promise.all([
-    getSnapshot("timestamp::date = CURRENT_DATE"),
-    getSnapshot("timestamp >= DATE_TRUNC('month', CURRENT_DATE)"),
-    getSnapshot("timestamp >= DATE_TRUNC('year', CURRENT_DATE)"),
+    getSnapshot(`(timestamp AT TIME ZONE '${TZ}')::date = (NOW() AT TIME ZONE '${TZ}')::date`),
+    getSnapshot(`timestamp >= DATE_TRUNC('month', NOW() AT TIME ZONE '${TZ}') AT TIME ZONE '${TZ}'`),
+    getSnapshot(`timestamp >= DATE_TRUNC('year', NOW() AT TIME ZONE '${TZ}') AT TIME ZONE '${TZ}'`),
     pool.query(`
     SELECT
       'highest_temp' as key, MAX(outside_temp) as value,
@@ -180,7 +182,7 @@ export async function GET() {
         DATE_TRUNC('month', timestamp) as month,
         SUM(rain) as total_rain
       FROM weather_readings
-      WHERE timestamp >= DATE_TRUNC('year', CURRENT_DATE)
+      WHERE timestamp >= DATE_TRUNC('year', NOW() AT TIME ZONE '${TZ}') AT TIME ZONE '${TZ}'
       GROUP BY DATE_TRUNC('month', timestamp)
       ORDER BY month ASC
     `),

@@ -1,6 +1,8 @@
 import pool from "@/lib/db";
 import { NextResponse } from "next/server";
 
+const TZ = process.env.TZ ?? "Europe/Rome";
+
 export async function GET() {
   const [latestRes, statsRes] = await Promise.all([
     pool.query(
@@ -12,7 +14,7 @@ export async function GET() {
       WITH today AS (
         SELECT timestamp, outside_temp, rain
         FROM weather_readings
-        WHERE timestamp::date = CURRENT_DATE
+        WHERE (timestamp AT TIME ZONE '${TZ}')::date = (NOW() AT TIME ZONE '${TZ}')::date
       )
       SELECT
         MAX(outside_temp) AS high,
