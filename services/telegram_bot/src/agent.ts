@@ -23,9 +23,7 @@ const conversations = new Map<string, Conversation>();
  */
 function localISONow(): string {
   const now = new Date();
-  const utcDate = new Date(
-    now.toLocaleString("en-US", { timeZone: "UTC" }),
-  );
+  const utcDate = new Date(now.toLocaleString("en-US", { timeZone: "UTC" }));
   const tzDate = new Date(
     now.toLocaleString("en-US", { timeZone: config.timezone }),
   );

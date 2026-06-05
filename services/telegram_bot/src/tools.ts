@@ -13,7 +13,11 @@ export const toolDefinitions: OpenAI.Chat.Completions.ChatCompletionTool[] = [
         "Get the most recent live weather reading from the station " +
         "(temperature, humidity, wind, barometer, rain, dew point). " +
         "Use for questions about conditions right now.",
-      parameters: { type: "object", properties: {}, additionalProperties: false },
+      parameters: {
+        type: "object",
+        properties: {},
+        additionalProperties: false,
+      },
     },
   },
   {
@@ -31,7 +35,8 @@ export const toolDefinitions: OpenAI.Chat.Completions.ChatCompletionTool[] = [
         properties: {
           start: {
             type: "string",
-            description: "Start of the range, ISO 8601 (e.g. 2026-06-01T00:00:00).",
+            description:
+              "Start of the range, ISO 8601 (e.g. 2026-06-01T00:00:00).",
           },
           end: {
             type: "string",
@@ -114,15 +119,30 @@ async function getHistoricalSummary(args: {
   );
   const s = rows[0];
   if (!s || Number(s.n) === 0) {
-    return { error: "No data for the requested range.", start: args.start, end: args.end };
+    return {
+      error: "No data for the requested range.",
+      start: args.start,
+      end: args.end,
+    };
   }
   return {
     range: { start: args.start, end: args.end },
     samples: Number(s.n),
-    temperature_c: { min: round(s.temp_min), max: round(s.temp_max), avg: round(s.temp_avg) },
-    humidity_pct: { min: round(s.hum_min, 0), max: round(s.hum_max, 0), avg: round(s.hum_avg, 0) },
+    temperature_c: {
+      min: round(s.temp_min),
+      max: round(s.temp_max),
+      avg: round(s.temp_avg),
+    },
+    humidity_pct: {
+      min: round(s.hum_min, 0),
+      max: round(s.hum_max, 0),
+      avg: round(s.hum_avg, 0),
+    },
     wind_kmh: { avg: round(s.wind_avg), max_gust: round(s.wind_gust_max) },
-    rain_mm: { total: round(s.rain_total, 2), max_rate_mmh: round(s.rain_rate_max, 2) },
+    rain_mm: {
+      total: round(s.rain_total, 2),
+      max_rate_mmh: round(s.rain_rate_max, 2),
+    },
     barometer_mbar: { min: round(s.baro_min), max: round(s.baro_max) },
   };
 }
