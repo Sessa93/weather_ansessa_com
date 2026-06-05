@@ -2,6 +2,81 @@
 
 A modern weather dashboard for Davis WeatherLink-compatible stations. It features real-time monitoring, historical data visualization, weather alerts, and automated data ingestion.
 
+## 🏗 Architecture
+
+```mermaid
+graph TB
+    subgraph External["External Services"]
+        DAVIS["🌡 Davis WeatherLink<br/>Station API"]
+        OPENMETEO["🌤 Open-Meteo<br/>Forecast API"]
+        OPENAI["🤖 OpenAI<br/>GPT-4"]
+        BLITZ["⚡ Blitzortung<br/>Lightning API"]
+    end
+
+    subgraph Docker["Docker Compose Stack"]
+        subgraph NextJS["Next.js App :8083"]
+            PROXY["proxy.ts<br/>Access Logging"]
+            INGEST["instrumentation.ts<br/>Background Ingester"]
+            SSR["SSR Pages<br/>/ /graphs /records /reports /about"]
+            API["API Routes<br/>/api/current /api/readings<br/>/api/forecast /api/records<br/>/api/alerts /api/lightning<br/>/api/climate-report ..."]
+            LIVE["SSE Endpoint<br/>/api/live"]
+            MQTT_SUB["MQTT Subscriber"]
+        end
+
+        PG[("PostgreSQL 16<br/>weather_readings<br/>daily_records<br/>all_time_records")]
+
+        subgraph Mosquitto["Eclipse Mosquitto :1883"]
+            MQTT_BROKER["MQTT Broker"]
+        end
+
+        subgraph UDPListener["UDP Listener :22222"]
+            UDP["Rust Service<br/>Davis UDP → MQTT"]
+        end
+
+        subgraph TelegramBot["Telegram Bot :8084"]
+            BOT["Grammy Bot<br/>AI Agent (OpenAI)<br/>Alert Checker<br/>Daily Summary Cron"]
+        end
+
+        subgraph VirtualStation["Virtual Station :8888"]
+            SIM["Simulator<br/>(profile: simulator)"]
+        end
+    end
+
+    subgraph Clients["Clients"]
+        BROWSER["🌐 Browser / PWA"]
+        TG["📱 Telegram"]
+    end
+
+    %% Data flow
+    DAVIS -- "HTTP poll<br/>every 10 min" --> INGEST
+    DAVIS -- "UDP live<br/>every 2.5s" --> UDP
+    SIM -. "HTTP + UDP<br/>(dev mode)" .-> INGEST
+    SIM -. "UDP" .-> UDP
+    UDP -- "MQTT publish<br/>weather/live" --> MQTT_BROKER
+    MQTT_BROKER -- "subscribe" --> MQTT_SUB
+    MQTT_SUB -- "push" --> LIVE
+    INGEST -- "INSERT" --> PG
+    API -- "SELECT" --> PG
+    BOT -- "SELECT" --> PG
+    SSR -- "fetch" --> API
+    OPENMETEO -- "forecast" --> API
+    OPENAI -- "summaries" --> API
+    OPENAI -- "agent tools" --> BOT
+    BLITZ -- "strikes" --> API
+    BROWSER -- "HTTP/SSE" --> PROXY --> SSR
+    BROWSER -- "SSE" --> LIVE
+    TG -- "messages" --> BOT
+    BOT -- "alerts/summaries" --> TG
+```
+
+### Data Flow
+
+1. **Ingestion** — The Next.js background worker (`instrumentation.ts`) polls the Davis station HTTP API every 10 minutes and stores readings in PostgreSQL. On failure, it backs off exponentially up to 60 minutes.
+2. **Real-time** — The station broadcasts UDP packets every 2.5s. A Rust `udp-listener` converts these to MQTT messages. The Next.js app subscribes and pushes updates to browsers via Server-Sent Events (SSE).
+3. **API** — Route handlers query PostgreSQL for current conditions, time-series readings, records, climatology, and alerts. Forecast and lightning data come from external APIs.
+4. **Telegram Bot** — An independent Node.js service with a GPT-4 AI agent that answers weather questions via function calling, sends daily summary broadcasts, and checks for weather alert thresholds every 5 minutes.
+5. **Frontend** — A PWA built with Next.js App Router, Recharts, and Tailwind CSS. Supports service worker caching, push notifications, and real-time updates.
+
 ## ✨ Features
 
 - **Real-time conditions** — live temperature, humidity, wind compass, barometer with 3-hour pressure trend sparkline
