@@ -3,13 +3,35 @@ import cron from "node-cron";
 import { config } from "./config.js";
 import { answer } from "./agent.js";
 import { bot, sendText } from "./telegram.js";
-import { sendDailySummary } from "./dailySummary.js";
+import { sendDailySummary, buildSummary } from "./dailySummary.js";
 import { checkAndBroadcastAlerts } from "./alertChecker.js";
 
 const app = express();
 app.use(express.json());
 
 app.get("/health", (_req, res) => res.json({ ok: true }));
+
+// --- Commands (registered before the catch-all so they aren't sent to the LLM) ---
+bot.command("start", async (ctx) => {
+  await ctx.reply(
+    `Ciao! Sono l'assistente meteo di ${config.stationName}.\n` +
+      `Chiedimi le condizioni attuali, storiche o le previsioni.\n\n` +
+      `Comandi:\n/previsioni — riepilogo meteo di oggi\n\n` +
+      `ID di questa chat: ${ctx.chat.id}\n` +
+      `(aggiungilo a DAILY_SUMMARY_CHAT_IDS per ricevere il riepilogo automatico)`,
+  );
+});
+
+// Manual trigger to verify the daily summary works without waiting for the cron.
+bot.command("previsioni", async (ctx) => {
+  try {
+    const summary = await buildSummary();
+    await ctx.reply(summary);
+  } catch (err) {
+    console.error("[previsioni] Failed:", err);
+    await ctx.reply("Scusa, non riesco a recuperare le previsioni al momento.");
+  }
+});
 
 // --- Inbound Telegram messages ---
 bot.on("message:text", (ctx) => {
@@ -43,7 +65,11 @@ if (cron.validate(config.dailySummaryCron)) {
     timezone: config.timezone,
   });
   console.log(
-    `[cron] Daily summary scheduled: "${config.dailySummaryCron}" (${config.timezone})`,
+    `[cron] Daily summary scheduled: "${config.dailySummaryCron}" (${config.timezone}); ` +
+      `${config.dailyChatIds.length} chat id(s) configured` +
+      (config.dailyChatIds.length === 0
+        ? " — set DAILY_SUMMARY_CHAT_IDS or the broadcast will be skipped"
+        : ""),
   );
 } else {
   console.error(

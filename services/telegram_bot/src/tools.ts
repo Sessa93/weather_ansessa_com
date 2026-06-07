@@ -1,6 +1,5 @@
 import type OpenAI from "openai";
 import { pool } from "./db.js";
-import { config } from "./config.js";
 import { fetchForecast } from "./forecast.js";
 
 /** OpenAI function-tool schemas exposed to the model. */
@@ -78,9 +77,8 @@ async function getCurrentConditions(): Promise<unknown> {
             wind_speed, wind_gust, wind_dir, barometer, rain, rain_rate,
             wind_chill, heat_index
      FROM weather_readings
-     WHERE station_id = $1 AND outside_temp IS NOT NULL
+     WHERE outside_temp IS NOT NULL
      ORDER BY timestamp DESC LIMIT 1`,
-    [config.stationId],
   );
   if (rows.length === 0) return { error: "No readings available." };
   const r = rows[0];
@@ -114,8 +112,8 @@ async function getHistoricalSummary(args: {
        MIN(barometer) baro_min, MAX(barometer) baro_max,
        COUNT(*) n
      FROM weather_readings
-     WHERE station_id = $1 AND timestamp >= $2 AND timestamp < $3`,
-    [config.stationId, args.start, args.end],
+     WHERE timestamp >= $1 AND timestamp < $2`,
+    [args.start, args.end],
   );
   const s = rows[0];
   if (!s || Number(s.n) === 0) {

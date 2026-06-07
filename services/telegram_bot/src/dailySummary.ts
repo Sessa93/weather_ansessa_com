@@ -6,7 +6,7 @@ import { sendText } from "./telegram.js";
 const openai = new OpenAI({ apiKey: config.openaiApiKey });
 
 /** Build the morning forecast summary text via the LLM. */
-async function buildSummary(): Promise<string> {
+export async function buildSummary(): Promise<string> {
   const forecast = await fetchForecast(2);
   const today = forecast[0];
   const tomorrow = forecast[1];
