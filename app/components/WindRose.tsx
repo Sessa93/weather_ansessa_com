@@ -63,7 +63,7 @@ function degToDirIndex(deg: number): number {
 
 export default function WindRose({ data }: { data: Reading[] }) {
   const { messages } = useLocale();
-  const { chartData, dominantDir, avgSpeed, maxGust, calmPct } = useMemo(() => {
+  const { chartData, dominantDir, avgSpeed, maxGust } = useMemo(() => {
     const bins: Record<string, Record<string, number>> = {};
     for (const dir of DIRECTIONS) {
       bins[dir] = {};
@@ -116,14 +116,11 @@ export default function WindRose({ data }: { data: Reading[] }) {
       }
     }
 
-    const calmCount = valid.filter((r) => (r.wind_speed ?? 0) < 5).length;
-
     return {
       chartData,
       dominantDir: domDir,
       avgSpeed: valid.length ? +(sumSpeed / valid.length).toFixed(1) : 0,
       maxGust: +maxG.toFixed(1),
-      calmPct: +((calmCount / total) * 100).toFixed(0),
     };
   }, [data]);
 
@@ -151,7 +148,7 @@ export default function WindRose({ data }: { data: Reading[] }) {
         </div>
       </div>
 
-      <div className="relative">
+      <div>
         <ResponsiveContainer width="100%" height={340}>
           <RadarChart cx="50%" cy="50%" outerRadius="72%" data={chartData}>
             <PolarGrid
@@ -180,8 +177,7 @@ export default function WindRose({ data }: { data: Reading[] }) {
               }}
             />
             <PolarRadiusAxis
-              tick={{ fontSize: 9, fill: "#475569" }}
-              tickFormatter={(v: number) => `${v}%`}
+              tick={false}
               angle={90}
               stroke="transparent"
               axisLine={false}
@@ -231,18 +227,6 @@ export default function WindRose({ data }: { data: Reading[] }) {
             ))}
           </RadarChart>
         </ResponsiveContainer>
-
-        {/* Center calm indicator */}
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="flex flex-col items-center bg-slate-900/80 rounded-full w-16 h-16 justify-center border border-slate-700/50">
-            <span className="text-lg font-bold text-slate-200 leading-none">
-              {calmPct}%
-            </span>
-            <span className="text-[9px] text-slate-500 uppercase tracking-wider">
-              {messages.windRose.calm}
-            </span>
-          </div>
-        </div>
       </div>
 
       {/* Legend */}

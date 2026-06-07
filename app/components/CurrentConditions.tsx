@@ -223,6 +223,7 @@ export default function CurrentConditionsPanel() {
             label={messages.current.barometer}
             value={`${fmt(display.barometer, 1)} mbar`}
             sub={<PressureSparkline data={pressureTrend} />}
+            subFullWidth
             icon={
               <svg
                 width="16"
@@ -555,12 +556,31 @@ function MetricCard({
   value,
   sub,
   icon,
+  subFullWidth = false,
 }: {
   label: string;
   value: string;
   sub?: React.ReactNode;
   icon?: React.ReactNode;
+  /** Render `sub` across the full card width instead of indented under the icon. */
+  subFullWidth?: boolean;
 }) {
+  // Full-width sub: icon+label on one row, value below, sub spanning the whole card.
+  if (subFullWidth) {
+    return (
+      <div className="bg-slate-700/50 rounded-lg p-3 flex flex-col">
+        <div className="flex items-center gap-2 text-slate-400">
+          {icon && <div className="shrink-0">{icon}</div>}
+          <div className="text-xs uppercase font-semibold">{label}</div>
+        </div>
+        <div className="text-base font-medium text-slate-100 break-words mt-1">
+          {value}
+        </div>
+        {sub && <div className="text-xs text-slate-500 mt-1">{sub}</div>}
+      </div>
+    );
+  }
+
   return (
     <div className="bg-slate-700/50 rounded-lg p-3 flex items-start gap-3">
       {icon && <div className="mt-1 text-slate-400 shrink-0">{icon}</div>}
