@@ -19,14 +19,34 @@ const CELL = 13;
 const GAP = 2;
 const TOTAL = CELL + GAP;
 
+/** Linear interpolation between two hex colors. t in [0, 1]. */
+function lerpColor(a: string, b: string, t: number): string {
+  const ah = a.replace("#", "");
+  const bh = b.replace("#", "");
+  const ar = parseInt(ah.slice(0, 2), 16);
+  const ag = parseInt(ah.slice(2, 4), 16);
+  const ab = parseInt(ah.slice(4, 6), 16);
+  const br = parseInt(bh.slice(0, 2), 16);
+  const bg = parseInt(bh.slice(2, 4), 16);
+  const bb = parseInt(bh.slice(4, 6), 16);
+  const r = Math.round(ar + (br - ar) * t);
+  const g = Math.round(ag + (bg - ag) * t);
+  const bl = Math.round(ab + (bb - ab) * t);
+  return `rgb(${r}, ${g}, ${bl})`;
+}
+
+// Dry day (no precipitation): a calm neutral that recedes, distinct from the
+// no-data cell color (#1e293b).
+const RAIN_DRY = "#2b3442";
+
 function getColor(value: number, min: number, max: number, metric: Metric) {
   const range = max - min || 1;
   const t = Math.max(0, Math.min(1, (value - min) / range));
 
   if (metric === "total_rain") {
-    // Blue scale for rain
-    const b = Math.round(100 + t * 155);
-    return `rgb(${Math.round(30 + (1 - t) * 100)}, ${Math.round(60 + (1 - t) * 100)}, ${b})`;
+    if (value <= 0) return RAIN_DRY;
+    // Rain present: dim blue → bright sky-blue as the amount increases.
+    return lerpColor("#1e3a5f", "#38bdf8", t);
   }
 
   if (metric === "avg_humidity") {
