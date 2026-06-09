@@ -127,3 +127,17 @@ services:
       TZ: ${TZ:-Europe/Rome}
     dns:
       - "8.8.8.8"
+
+  whatsapp-bot:
+    build: ./services/whatsapp_bot
+    restart: unless-stopped
+    ports:
+      - "${WHATSAPP_BOT_PORT:-8085}:8085"
+    environment:
+      WHATSAPP_GROUP_NAME: ${WHATSAPP_GROUP_NAME:-Famiglia}
+      HEADLESS: ${WHATSAPP_HEADLESS:-true}
+    volumes:
+      - whatsapp-auth:/data/auth
+
+volumes:
+  whatsapp-auth:
