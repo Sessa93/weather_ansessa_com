@@ -121,79 +121,19 @@ export default function ReportsPage() {
     setPdfBusy(true);
     setPdfError(null);
 
-    const replacements: {
-      parent: Node;
-      canvas: HTMLCanvasElement;
-      svg: Element;
-    }[] = [];
-
     try {
-      const el = reportRef.current;
-
-      // html2canvas cannot render SVG elements reliably —
-      // pre-rasterise every Recharts SVG chart to a <canvas>.
-      const svgs = Array.from(
-        el.querySelectorAll<SVGSVGElement>("svg:not(.animate-spin)"),
-      );
-
-      for (const svg of svgs) {
-        const rect = svg.getBoundingClientRect();
-        if (rect.width === 0 || rect.height === 0) continue;
-
-        const clone = svg.cloneNode(true) as SVGSVGElement;
-        if (!clone.getAttribute("xmlns"))
-          clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
-        clone.setAttribute("width", String(rect.width));
-        clone.setAttribute("height", String(rect.height));
-
-        const xml = new XMLSerializer().serializeToString(clone);
-        const blob = new Blob([xml], {
-          type: "image/svg+xml;charset=utf-8",
-        });
-        const url = URL.createObjectURL(blob);
-
-        const c = document.createElement("canvas");
-        c.width = rect.width * 2;
-        c.height = rect.height * 2;
-        c.style.width = `${rect.width}px`;
-        c.style.height = `${rect.height}px`;
-
-        const ctx = c.getContext("2d");
-        if (!ctx) continue;
-
-        await new Promise<void>((resolve) => {
-          const img = new Image();
-          img.onload = () => {
-            ctx.drawImage(img, 0, 0, c.width, c.height);
-            URL.revokeObjectURL(url);
-            resolve();
-          };
-          img.onerror = () => {
-            URL.revokeObjectURL(url);
-            resolve();
-          };
-          img.src = url;
-        });
-
-        if (svg.parentNode) {
-          const parent = svg.parentNode;
-          parent.replaceChild(c, svg);
-          replacements.push({ parent, canvas: c, svg });
-        }
-      }
-
-      const { default: html2canvas } = await import("html2canvas");
+      const { default: html2canvas } = await import("html2canvas-pro");
       const { jsPDF } = await import("jspdf");
 
-      const rendered = await html2canvas(el, {
+      const canvas = await html2canvas(reportRef.current, {
         backgroundColor: "#0f172a",
         scale: 2,
         useCORS: true,
       });
 
-      const imgData = rendered.toDataURL("image/png");
-      const imgW = rendered.width;
-      const imgH = rendered.height;
+      const imgData = canvas.toDataURL("image/png");
+      const imgW = canvas.width;
+      const imgH = canvas.height;
 
       const pdf = new jsPDF({
         orientation: imgW > imgH ? "landscape" : "portrait",
@@ -209,13 +149,6 @@ export default function ReportsPage() {
         reportMsgs.pdfError ?? "Failed to generate PDF. Please try again.",
       );
     } finally {
-      for (const { parent, canvas, svg } of replacements) {
-        try {
-          parent.replaceChild(svg, canvas);
-        } catch {
-          /* DOM moved */
-        }
-      }
       setPdfBusy(false);
     }
   };
