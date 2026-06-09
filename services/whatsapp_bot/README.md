@@ -23,6 +23,7 @@ HEADLESS=false npm start
 Scan the QR code with your phone, then Ctrl+C. The session is saved to `./auth/`.
 
 For Docker, the auth state is stored in the `whatsapp-auth` volume. You can either:
+
 - Run locally first (as above), then copy the `auth/` dir into the volume
 - Or set `WHATSAPP_HEADLESS=false` and use VNC/X11 forwarding
 
@@ -53,10 +54,10 @@ If `WHATSAPP_GROUP_NAME` is set, the `group` field is optional.
 
 ## Environment variables
 
-| Variable              | Default        | Description                              |
-| --------------------- | -------------- | ---------------------------------------- |
-| `PORT`                | `8085`         | API server port                          |
-| `WHATSAPP_GROUP_NAME` | (empty)        | Default group to send messages to        |
-| `HEADLESS`            | `true`         | Run Chromium headless                    |
-| `AUTH_DIR`            | `/data/auth`   | Path to persist browser session          |
-| `PAGE_LOAD_TIMEOUT`   | `60000`        | WhatsApp Web load timeout (ms)           |
+| Variable              | Default      | Description                       |
+| --------------------- | ------------ | --------------------------------- |
+| `PORT`                | `8085`       | API server port                   |
+| `WHATSAPP_GROUP_NAME` | (empty)      | Default group to send messages to |
+| `HEADLESS`            | `true`       | Run Chromium headless             |
+| `AUTH_DIR`            | `/data/auth` | Path to persist browser session   |
+| `PAGE_LOAD_TIMEOUT`   | `60000`      | WhatsApp Web load timeout (ms)    |

@@ -1,6 +1,12 @@
 import express from "express";
 import { config } from "./config.js";
-import { init, sendMessage, getStatus, getScreenshot, close } from "./whatsapp.js";
+import {
+  init,
+  sendMessage,
+  getStatus,
+  getScreenshot,
+  close,
+} from "./whatsapp.js";
 
 const app = express();
 app.use(express.json());
@@ -21,7 +27,9 @@ app.get("/qr", async (_req, res) => {
 
   const png = await getScreenshot();
   if (!png) {
-    res.status(503).json({ error: "Browser not ready yet. Try again in a few seconds." });
+    res
+      .status(503)
+      .json({ error: "Browser not ready yet. Try again in a few seconds." });
     return;
   }
 
@@ -40,7 +48,9 @@ app.post("/send", async (req, res) => {
   const targetGroup = group ?? config.groupName;
 
   if (!targetGroup) {
-    res.status(400).json({ error: "Missing 'group' (or set WHATSAPP_GROUP_NAME env var)." });
+    res
+      .status(400)
+      .json({ error: "Missing 'group' (or set WHATSAPP_GROUP_NAME env var)." });
     return;
   }
   if (!message || typeof message !== "string") {
@@ -84,18 +94,24 @@ async function main() {
     await init();
   } catch (err) {
     console.error("[whatsapp-bot] Failed to initialize WhatsApp:", err);
-    console.log("[whatsapp-bot] Starting API server anyway — retry by restarting the container.");
+    console.log(
+      "[whatsapp-bot] Starting API server anyway — retry by restarting the container.",
+    );
   }
 
   app.listen(config.port, () => {
     console.log(`[whatsapp-bot] API listening on :${config.port}`);
-    console.log(`[whatsapp-bot] POST /send { "group": "...", "message": "..." }`);
+    console.log(
+      `[whatsapp-bot] POST /send { "group": "...", "message": "..." }`,
+    );
     console.log(`[whatsapp-bot] GET  /health`);
     console.log(`[whatsapp-bot] GET  /qr    (view QR code for remote auth)`);
 
     const status = getStatus();
     if (status.qrVisible) {
-      console.log(`[whatsapp-bot] QR code is waiting — open http://localhost:${config.port}/qr in your browser to scan it.`);
+      console.log(
+        `[whatsapp-bot] QR code is waiting — open http://localhost:${config.port}/qr in your browser to scan it.`,
+      );
     }
   });
 }

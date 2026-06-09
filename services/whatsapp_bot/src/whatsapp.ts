@@ -27,9 +27,7 @@ export async function init(): Promise<void> {
     mkdirSync(config.authDir, { recursive: true });
   }
 
-  console.log(
-    `[whatsapp] Launching Chromium (headless=${config.headless})...`,
-  );
+  console.log(`[whatsapp] Launching Chromium (headless=${config.headless})...`);
 
   context = await chromium.launchPersistentContext(config.authDir, {
     headless: config.headless,
@@ -58,10 +56,7 @@ export async function init(): Promise<void> {
   console.log("[whatsapp] Waiting for authentication...");
 
   try {
-    await Promise.race([
-      waitForQrCode(page),
-      waitForChatList(page),
-    ]);
+    await Promise.race([waitForQrCode(page), waitForChatList(page)]);
   } catch (err) {
     console.error("[whatsapp] Auth detection failed:", err);
     throw err;
@@ -70,12 +65,17 @@ export async function init(): Promise<void> {
 
 async function waitForQrCode(p: Page): Promise<void> {
   // WhatsApp Web shows a canvas with the QR code
-  await p.waitForSelector('canvas[aria-label="Scan this QR code to link a device!"], div[data-ref]', {
-    timeout: config.pageLoadTimeout,
-  });
+  await p.waitForSelector(
+    'canvas[aria-label="Scan this QR code to link a device!"], div[data-ref]',
+    {
+      timeout: config.pageLoadTimeout,
+    },
+  );
 
   // Check if we actually landed on the QR (not the chat list)
-  const chatList = await p.$('div[aria-label="Chat list"], div[id="pane-side"]');
+  const chatList = await p.$(
+    'div[aria-label="Chat list"], div[id="pane-side"]',
+  );
   if (chatList) {
     // Already authenticated — the race was won by an old session
     ready = true;
@@ -89,9 +89,7 @@ async function waitForQrCode(p: Page): Promise<void> {
   console.log(
     "[whatsapp] QR code visible — scan it with your phone to authenticate.",
   );
-  console.log(
-    "[whatsapp] GET /qr to view the QR code from a browser.",
-  );
+  console.log("[whatsapp] GET /qr to view the QR code from a browser.");
 
   // Wait for QR scan in the background so init() can return and start the API
   void waitForChatList(p);
@@ -123,9 +121,7 @@ export async function sendMessage(
   console.log(`[whatsapp] Sending message to "${groupName}"...`);
 
   // Click on the search/new-chat input
-  const searchBox = page.locator(
-    'div[contenteditable="true"][data-tab="3"]',
-  );
+  const searchBox = page.locator('div[contenteditable="true"][data-tab="3"]');
   await searchBox.click();
   await searchBox.fill("");
 

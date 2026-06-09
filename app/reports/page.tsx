@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   BarChart,
   Bar,
@@ -89,6 +89,8 @@ export default function ReportsPage() {
   const [data, setData] = useState<ReportData | null>(null);
   const [year, setYear] = useState(new Date().getFullYear());
   const [loading, setLoading] = useState(true);
+  const [pdfBusy, setPdfBusy] = useState(false);
+  const reportRef = useRef<HTMLDivElement>(null);
   const monthNames = locale === "it" ? MONTH_NAMES_IT : MONTH_NAMES_EN;
   const m = messages as Record<string, Record<string, string>>;
   const reportMsgs = (m.reports ?? {}) as Record<string, string>;
@@ -113,6 +115,39 @@ export default function ReportsPage() {
     name: monthNames[m.month - 1] ?? m.month,
   }));
 
+  const downloadPdf = async () => {
+    if (!reportRef.current || pdfBusy) return;
+    setPdfBusy(true);
+    try {
+      const { default: html2canvas } = await import("html2canvas");
+      const { jsPDF } = await import("jspdf");
+
+      const canvas = await html2canvas(reportRef.current, {
+        backgroundColor: "#0f172a",
+        scale: 2,
+        useCORS: true,
+      });
+
+      const imgData = canvas.toDataURL("image/png");
+      const imgW = canvas.width;
+      const imgH = canvas.height;
+
+      // A4 landscape for wide charts/tables
+      const pdf = new jsPDF({
+        orientation: imgW > imgH ? "landscape" : "portrait",
+        unit: "px",
+        format: [imgW, imgH],
+      });
+
+      pdf.addImage(imgData, "PNG", 0, 0, imgW, imgH);
+      pdf.save(`climate-report-${year}.pdf`);
+    } catch (err) {
+      console.error("[pdf] Failed to generate PDF:", err);
+    } finally {
+      setPdfBusy(false);
+    }
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
       {/* Header */}
@@ -120,19 +155,67 @@ export default function ReportsPage() {
         <h1 className="text-2xl font-bold text-slate-100">
           {reportMsgs.title ?? "Climate Reports"}
         </h1>
-        {data && data.availableYears.length > 0 && (
-          <select
-            value={year}
-            onChange={(e) => setYear(Number(e.target.value))}
-            className="bg-slate-800 border border-slate-600 text-slate-200 rounded px-3 py-2 text-sm"
-          >
-            {data.availableYears.map((y) => (
-              <option key={y} value={y}>
-                {y}
-              </option>
-            ))}
-          </select>
-        )}
+        <div className="flex items-center gap-3">
+          {data && !loading && data.yearly && (
+            <button
+              onClick={downloadPdf}
+              disabled={pdfBusy}
+              className="flex items-center gap-2 bg-sky-600 hover:bg-sky-500 disabled:bg-slate-600 text-white text-sm font-medium rounded px-4 py-2 transition-colors"
+            >
+              {pdfBusy ? (
+                <svg
+                  className="animate-spin h-4 w-4"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                  />
+                </svg>
+              ) : (
+                <svg
+                  className="h-4 w-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M12 10v6m0 0l-3-3m3 3l3-3M3 17v3a2 2 0 002 2h14a2 2 0 002-2v-3"
+                  />
+                </svg>
+              )}
+              {pdfBusy
+                ? (reportMsgs.generating ?? "Generating…")
+                : (reportMsgs.downloadPdf ?? "Download PDF")}
+            </button>
+          )}
+          {data && data.availableYears.length > 0 && (
+            <select
+              value={year}
+              onChange={(e) => setYear(Number(e.target.value))}
+              className="bg-slate-800 border border-slate-600 text-slate-200 rounded px-3 py-2 text-sm"
+            >
+              {data.availableYears.map((y) => (
+                <option key={y} value={y}>
+                  {y}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
       </div>
 
       {loading ? (
@@ -145,7 +228,7 @@ export default function ReportsPage() {
           {reportMsgs.noData ?? "No data available for this year."}
         </div>
       ) : (
-        <>
+        <div ref={reportRef}>
           {/* Yearly overview cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
             <StatCard
@@ -366,7 +449,7 @@ export default function ReportsPage() {
               </table>
             </div>
           </div>
-        </>
+        </div>
       )}
     </div>
   );
