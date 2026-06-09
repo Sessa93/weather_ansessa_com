@@ -33,33 +33,53 @@ export async function fetchForecast(days = 3): Promise<DailyForecast[]> {
     `&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,wind_speed_10m_max` +
     `&timezone=auto&forecast_days=${days}`;
 
-  const res = await fetch(url, {
-    headers: { "User-Agent": "weather-whatsapp-bot/1.0" },
-    signal: AbortSignal.timeout(10_000),
-  });
-  if (!res.ok) throw new Error(`Open-Meteo responded ${res.status}`);
+  const MAX_RETRIES = 3;
+  let lastError: unknown;
 
-  const data = (await res.json()) as {
-    daily?: {
-      time: string[];
-      weather_code: number[];
-      temperature_2m_max: number[];
-      temperature_2m_min: number[];
-      precipitation_sum: number[];
-      precipitation_probability_max: number[];
-      wind_speed_10m_max: number[];
-    };
-  };
-  const d = data.daily;
-  if (!d?.time) throw new Error("Invalid forecast response");
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+    try {
+      const timeoutMs = 10_000 * (attempt + 1); // 10s, 20s, 30s
+      const res = await fetch(url, {
+        headers: { "User-Agent": "weather-telegram-bot/1.0" },
+        signal: AbortSignal.timeout(timeoutMs),
+      });
+      if (!res.ok) throw new Error(`Open-Meteo responded ${res.status}`);
 
-  return d.time.map((date: string, i: number) => ({
-    date,
-    maxTemp: d.temperature_2m_max[i],
-    minTemp: d.temperature_2m_min[i],
-    precipitationSum: d.precipitation_sum[i],
-    precipitationProbabilityMax: d.precipitation_probability_max[i],
-    windSpeedMax: d.wind_speed_10m_max[i],
-    condition: weatherCondition(d.weather_code[i]),
-  }));
+      const data = (await res.json()) as {
+        daily?: {
+          time: string[];
+          weather_code: number[];
+          temperature_2m_max: number[];
+          temperature_2m_min: number[];
+          precipitation_sum: number[];
+          precipitation_probability_max: number[];
+          wind_speed_10m_max: number[];
+        };
+      };
+      const d = data.daily;
+      if (!d?.time) throw new Error("Invalid forecast response");
+
+      return d.time.map((date: string, i: number) => ({
+        date,
+        maxTemp: d.temperature_2m_max[i],
+        minTemp: d.temperature_2m_min[i],
+        precipitationSum: d.precipitation_sum[i],
+        precipitationProbabilityMax: d.precipitation_probability_max[i],
+        windSpeedMax: d.wind_speed_10m_max[i],
+        condition: weatherCondition(d.weather_code[i]),
+      }));
+    } catch (err) {
+      lastError = err;
+      if (attempt < MAX_RETRIES - 1) {
+        const delayMs = 2_000 * (attempt + 1);
+        console.warn(
+          `[forecast] Attempt ${attempt + 1} failed, retrying in ${delayMs / 1000}s:`,
+          err instanceof Error ? err.message : err,
+        );
+        await new Promise((r) => setTimeout(r, delayMs));
+      }
+    }
+  }
+
+  throw lastError;
 }
