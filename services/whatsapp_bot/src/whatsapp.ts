@@ -257,7 +257,16 @@ export function startListening(
     });
   };
 
-  setInterval(() => void poll(), config.pollIntervalMs);
+  // Never let polls pile up in the page-lock queue: a slow or failing poll
+  // would otherwise starve sendMessage calls waiting on the same lock.
+  let pollInFlight = false;
+  setInterval(() => {
+    if (pollInFlight) return;
+    pollInFlight = true;
+    void poll().finally(() => {
+      pollInFlight = false;
+    });
+  }, config.pollIntervalMs);
   console.log(
     `[whatsapp] Listening for messages in "${groupName}" (every ${config.pollIntervalMs}ms)`,
   );
