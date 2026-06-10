@@ -19,7 +19,23 @@ app.use(express.json());
 // --- Health / status ---
 app.get("/health", (_req, res) => {
   const status = getStatus();
-  res.json({ ok: status.ready, ...status });
+  res.json({
+    ok: status.ready,
+    version: process.env.npm_package_version ?? "unknown",
+    ...status,
+  });
+});
+
+// --- Page screenshot (debugging: see what WhatsApp Web is showing) ---
+app.get("/screenshot", async (_req, res) => {
+  const png = await getScreenshot();
+  if (!png) {
+    res.status(503).json({ error: "Browser not ready." });
+    return;
+  }
+  res.setHeader("Content-Type", "image/png");
+  res.setHeader("Cache-Control", "no-store");
+  res.send(png);
 });
 
 // --- QR code screenshot (for remote auth) ---
