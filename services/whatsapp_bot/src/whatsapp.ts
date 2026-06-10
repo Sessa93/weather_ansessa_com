@@ -119,38 +119,44 @@ const SEARCH_BOX_SELECTOR = [
   'div[aria-label="Search input textbox"]',
   '#side div[contenteditable="true"][role="textbox"]',
   '#side [data-testid="chat-list-search"]',
+  'div[contenteditable="true"][aria-placeholder="Search or start a new chat"]',
+  'div[contenteditable="true"][aria-placeholder="Cerca o inizia una nuova chat"]',
 ].join(", ");
 
 const MESSAGE_BOX_SELECTOR = [
   'div[contenteditable="true"][data-tab="10"]',
   'footer div[contenteditable="true"]',
   'div[aria-label="Type a message"]',
+  'div[contenteditable="true"][aria-placeholder="Type a message"]',
+  'div[contenteditable="true"][aria-placeholder="Scrivi un messaggio"]',
 ].join(", ");
 
-/** Open a chat by display name via the sidebar search. */
+/** Open a chat by display name: click its sidebar row, searching if needed. */
 async function openChat(p: Page, chatName: string): Promise<void> {
   // Already open? The conversation header shows the chat title.
   const header = p.locator(`#main header span[title="${chatName}"]`);
   if (await header.count()) return;
 
-  const searchBox = p.locator(SEARCH_BOX_SELECTOR).first();
-  try {
-    await searchBox.click({ timeout: 10_000 });
-  } catch (err) {
-    // The search box can be hidden behind an overlay (update banner, dialog).
-    // Press Escape to dismiss it and retry once before giving up.
-    await p.keyboard.press("Escape");
-    await searchBox.click({ timeout: 5_000 });
+  // Fast path: the chat row is already visible in the sidebar list.
+  const row = p.locator(`span[title="${chatName}"]`).first();
+  if (!(await row.isVisible().catch(() => false))) {
+    const searchBox = p
+      .locator(SEARCH_BOX_SELECTOR)
+      .or(p.getByRole("textbox", { name: /search|cerca/i }))
+      .first();
+    try {
+      await searchBox.click({ timeout: 10_000 });
+    } catch {
+      // The search box can be hidden behind an overlay (update banner,
+      // dialog). Press Escape to dismiss it and retry once.
+      await p.keyboard.press("Escape");
+      await searchBox.click({ timeout: 5_000 });
+    }
+    await searchBox.fill("");
+    await searchBox.pressSequentially(chatName, { delay: 50 });
+    await row.waitFor({ timeout: 10_000 });
   }
-  await searchBox.fill("");
-  await searchBox.pressSequentially(chatName, { delay: 50 });
-  await p.waitForTimeout(1500);
-
-  const result = p
-    .locator(`#side span[title="${chatName}"], span[title="${chatName}"]`)
-    .first();
-  await result.waitFor({ timeout: 10_000 });
-  await result.click();
+  await row.click();
 
   await p.locator(MESSAGE_BOX_SELECTOR).first().waitFor({ timeout: 10_000 });
 }
