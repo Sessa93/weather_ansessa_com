@@ -112,27 +112,47 @@ async function waitForChatList(p: Page): Promise<void> {
   console.log("[whatsapp] Authenticated and ready.");
 }
 
+// WhatsApp Web's DOM attributes change between releases, so every lookup
+// tries several known selector variants.
+const SEARCH_BOX_SELECTOR = [
+  '#side div[contenteditable="true"][data-tab="3"]',
+  'div[aria-label="Search input textbox"]',
+  '#side div[contenteditable="true"][role="textbox"]',
+  '#side [data-testid="chat-list-search"]',
+].join(", ");
+
+const MESSAGE_BOX_SELECTOR = [
+  'div[contenteditable="true"][data-tab="10"]',
+  'footer div[contenteditable="true"]',
+  'div[aria-label="Type a message"]',
+].join(", ");
+
 /** Open a chat by display name via the sidebar search. */
 async function openChat(p: Page, chatName: string): Promise<void> {
   // Already open? The conversation header shows the chat title.
-  const header = p.locator(`header span[title="${chatName}"]`);
+  const header = p.locator(`#main header span[title="${chatName}"]`);
   if (await header.count()) return;
 
-  const searchBox = p.locator('div[contenteditable="true"][data-tab="3"]');
-  await searchBox.click();
+  const searchBox = p.locator(SEARCH_BOX_SELECTOR).first();
+  try {
+    await searchBox.click({ timeout: 10_000 });
+  } catch (err) {
+    // The search box can be hidden behind an overlay (update banner, dialog).
+    // Press Escape to dismiss it and retry once before giving up.
+    await p.keyboard.press("Escape");
+    await searchBox.click({ timeout: 5_000 });
+  }
   await searchBox.fill("");
   await searchBox.pressSequentially(chatName, { delay: 50 });
   await p.waitForTimeout(1500);
 
-  const result = p.locator(`span[title="${chatName}"]`).first();
+  const result = p
+    .locator(`#side span[title="${chatName}"], span[title="${chatName}"]`)
+    .first();
   await result.waitFor({ timeout: 10_000 });
   await result.click();
 
-  await p
-    .locator(
-      'div[contenteditable="true"][data-tab="10"], footer div[contenteditable="true"]',
-    )
-    .waitFor({ timeout: 10_000 });
+  await p.locator(MESSAGE_BOX_SELECTOR).first().waitFor({ timeout: 10_000 });
 }
 
 /**
@@ -151,9 +171,7 @@ export async function sendMessage(
     console.log(`[whatsapp] Sending message to "${chatName}"...`);
     await openChat(p, chatName);
 
-    const messageBox = p.locator(
-      'div[contenteditable="true"][data-tab="10"], footer div[contenteditable="true"]',
-    );
+    const messageBox = p.locator(MESSAGE_BOX_SELECTOR).first();
     await messageBox.click();
 
     // Type line by line: a plain Enter would send each line as a separate
