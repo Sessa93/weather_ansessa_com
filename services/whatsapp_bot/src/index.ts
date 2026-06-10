@@ -1,8 +1,13 @@
 import express from "express";
+import cron from "node-cron";
 import { config } from "./config.js";
+import { answer } from "./agent.js";
+import { sendDailySummary, buildSummary } from "./dailySummary.js";
+import { checkAndBroadcastAlerts } from "./alertChecker.js";
 import {
   init,
   sendMessage,
+  startListening,
   getStatus,
   getScreenshot,
   close,
@@ -79,6 +84,60 @@ app.post("/send", async (req, res) => {
   }
 });
 
+// --- Inbound messages: trigger-prefixed questions go to the LLM agent ---
+const PREVISIONI_RE = /^[!/]?previsioni\b/i;
+
+function handleIncoming(sender: string, text: string): void {
+  const trimmed = text.trim();
+  const prefix = config.triggerPrefix.toLowerCase();
+  if (!trimmed.toLowerCase().startsWith(prefix)) return;
+
+  const question = trimmed.slice(config.triggerPrefix.length).trim();
+  console.log(`[in] ${sender}: ${question}`);
+
+  void (async () => {
+    try {
+      // "previsioni" command: today's forecast summary, same as Telegram's
+      // /previsioni — anything else goes to the agent.
+      const reply = PREVISIONI_RE.test(question)
+        ? await buildSummary()
+        : await answer(sender, question);
+      await sendMessage(config.groupName, reply);
+      console.log(`[out] ${sender}: ${reply}`);
+    } catch (err) {
+      console.error(`[handle] Error for ${sender}:`, err);
+      await sendMessage(
+        config.groupName,
+        "Scusa, si è verificato un errore nel recupero dei dati meteo.",
+      ).catch(() => {});
+    }
+  })();
+}
+
+// --- Scheduled daily forecast broadcast ---
+if (cron.validate(config.dailySummaryCron)) {
+  cron.schedule(config.dailySummaryCron, () => void sendDailySummary(), {
+    timezone: config.timezone,
+  });
+  console.log(
+    `[cron] Daily summary scheduled: "${config.dailySummaryCron}" (${config.timezone}); ` +
+      `${config.dailyGroups.length} group(s) configured` +
+      (config.dailyGroups.length === 0
+        ? " — set DAILY_SUMMARY_GROUPS or WHATSAPP_GROUP_NAME or the broadcast will be skipped"
+        : ""),
+  );
+} else {
+  console.error(
+    `[cron] Invalid DAILY_SUMMARY_CRON: ${config.dailySummaryCron}`,
+  );
+}
+
+// --- Alert checker every 5 minutes ---
+cron.schedule("*/5 * * * *", () => void checkAndBroadcastAlerts(), {
+  timezone: config.timezone,
+});
+console.log("[cron] Alert checker scheduled: every 5 minutes");
+
 // --- Graceful shutdown ---
 async function shutdown() {
   console.log("[whatsapp-bot] Shutting down...");
@@ -96,6 +155,19 @@ async function main() {
     console.error("[whatsapp-bot] Failed to initialize WhatsApp:", err);
     console.log(
       "[whatsapp-bot] Starting API server anyway — retry by restarting the container.",
+    );
+  }
+
+  if (config.groupName) {
+    startListening(config.groupName, (msg) =>
+      handleIncoming(msg.sender, msg.text),
+    );
+    console.log(
+      `[whatsapp-bot] Agent active — trigger messages with "${config.triggerPrefix}"`,
+    );
+  } else {
+    console.warn(
+      "[whatsapp-bot] WHATSAPP_GROUP_NAME not set — inbound listening disabled.",
     );
   }
 

@@ -7,6 +7,14 @@ let page: Page | null = null;
 let ready = false;
 let qrVisible = false;
 
+/** Serialise all page interactions: the poller and senders share one page. */
+let opQueue: Promise<unknown> = Promise.resolve();
+function withPageLock<T>(fn: () => Promise<T>): Promise<T> {
+  const run = opQueue.then(fn, fn);
+  opQueue = run.catch(() => {});
+  return run;
+}
+
 /** Current connection state. */
 export function getStatus(): {
   ready: boolean;
@@ -104,52 +112,137 @@ async function waitForChatList(p: Page): Promise<void> {
   console.log("[whatsapp] Authenticated and ready.");
 }
 
+/** Open a chat by display name via the sidebar search. */
+async function openChat(p: Page, chatName: string): Promise<void> {
+  // Already open? The conversation header shows the chat title.
+  const header = p.locator(`header span[title="${chatName}"]`);
+  if (await header.count()) return;
+
+  const searchBox = p.locator('div[contenteditable="true"][data-tab="3"]');
+  await searchBox.click();
+  await searchBox.fill("");
+  await searchBox.pressSequentially(chatName, { delay: 50 });
+  await p.waitForTimeout(1500);
+
+  const result = p.locator(`span[title="${chatName}"]`).first();
+  await result.waitFor({ timeout: 10_000 });
+  await result.click();
+
+  await p
+    .locator(
+      'div[contenteditable="true"][data-tab="10"], footer div[contenteditable="true"]',
+    )
+    .waitFor({ timeout: 10_000 });
+}
+
 /**
- * Send a text message to a specific group chat.
- *
- * @param groupName - The display name of the WhatsApp group
- * @param message - The text message to send
+ * Send a text message to a specific chat (group or contact display name).
  */
 export async function sendMessage(
-  groupName: string,
+  chatName: string,
   message: string,
 ): Promise<void> {
   if (!page || !ready) {
     throw new Error("WhatsApp Web is not ready yet.");
   }
+  const p = page;
 
-  console.log(`[whatsapp] Sending message to "${groupName}"...`);
+  await withPageLock(async () => {
+    console.log(`[whatsapp] Sending message to "${chatName}"...`);
+    await openChat(p, chatName);
 
-  // Click on the search/new-chat input
-  const searchBox = page.locator('div[contenteditable="true"][data-tab="3"]');
-  await searchBox.click();
-  await searchBox.fill("");
+    const messageBox = p.locator(
+      'div[contenteditable="true"][data-tab="10"], footer div[contenteditable="true"]',
+    );
+    await messageBox.click();
 
-  // Type the group name to search for it
-  await searchBox.pressSequentially(groupName, { delay: 50 });
+    // Type line by line: a plain Enter would send each line as a separate
+    // message, Shift+Enter inserts a line break instead.
+    const lines = message.split("\n");
+    for (let i = 0; i < lines.length; i++) {
+      if (i > 0) await p.keyboard.press("Shift+Enter");
+      if (lines[i]) await p.keyboard.insertText(lines[i]);
+    }
+    await p.keyboard.press("Enter");
 
-  // Wait for search results, then click the matching group
-  await page.waitForTimeout(1500);
+    // Brief wait to confirm send
+    await p.waitForTimeout(1000);
+    console.log(`[whatsapp] Message sent to "${chatName}".`);
+  });
+}
 
-  const groupResult = page.locator(`span[title="${groupName}"]`).first();
-  await groupResult.waitFor({ timeout: 10_000 });
-  await groupResult.click();
+export interface IncomingMessage {
+  id: string;
+  sender: string;
+  text: string;
+}
 
-  // Wait for the message input to appear
-  const messageBox = page.locator(
-    'div[contenteditable="true"][data-tab="10"], footer div[contenteditable="true"]',
+let listening = false;
+
+/**
+ * Watch the configured group for new incoming messages and invoke the
+ * callback for each one. Messages already on screen at startup are skipped.
+ */
+export function startListening(
+  groupName: string,
+  onMessage: (msg: IncomingMessage) => void,
+): void {
+  if (listening) return;
+  listening = true;
+
+  const seen = new Set<string>();
+  let primed = false;
+
+  const poll = async (): Promise<void> => {
+    if (!page || !ready) return;
+    const p = page;
+
+    await withPageLock(async () => {
+      await openChat(p, groupName);
+
+      // Incoming messages carry the "message-in" class; the copyable-text
+      // wrapper's data-pre-plain-text holds "[HH:MM, D/M/YYYY] Sender: ".
+      const messages = await p.$$eval("div.message-in", (nodes) =>
+        nodes.map((node) => {
+          const row = node.closest("[data-id]");
+          const copyable = node.querySelector("[data-pre-plain-text]");
+          const textEl = node.querySelector("span.selectable-text");
+          return {
+            id: row?.getAttribute("data-id") ?? "",
+            pre: copyable?.getAttribute("data-pre-plain-text") ?? "",
+            text: textEl?.textContent ?? "",
+          };
+        }),
+      );
+
+      for (const m of messages) {
+        if (!m.id || seen.has(m.id)) continue;
+        seen.add(m.id);
+        if (!primed) continue; // skip history present at startup
+
+        const sender = m.pre.replace(/^\[[^\]]*\]\s*/, "").replace(/:\s*$/, "");
+        if (m.text.trim()) {
+          onMessage({ id: m.id, sender: sender || "unknown", text: m.text });
+        }
+      }
+      primed = true;
+
+      // Bound memory: data-ids of long-gone messages can be dropped.
+      if (seen.size > 2000) {
+        for (const id of [...seen].slice(0, 1000)) seen.delete(id);
+      }
+    }).catch((err) => {
+      console.error(
+        "[whatsapp] Poll failed:",
+        err instanceof Error ? err.message : err,
+      );
+    });
+  };
+
+  setInterval(() => void poll(), config.pollIntervalMs);
+  console.log(
+    `[whatsapp] Listening for messages in "${groupName}" (every ${config.pollIntervalMs}ms)`,
   );
-  await messageBox.waitFor({ timeout: 10_000 });
-  await messageBox.click();
-
-  // Type and send the message
-  await messageBox.fill(message);
-  await page.keyboard.press("Enter");
-
-  // Brief wait to confirm send
-  await page.waitForTimeout(1000);
-
-  console.log(`[whatsapp] Message sent to "${groupName}".`);
 }
 
 /**
