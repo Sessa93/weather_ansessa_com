@@ -129,6 +129,7 @@ services:
       - "8.8.8.8"
 
   whatsapp-bot:
+    image: ghcr.io/sessa93/weather_ansessa_com/whatsapp-bot:latest
     build: ./services/whatsapp_bot
     restart: unless-stopped
     depends_on:
