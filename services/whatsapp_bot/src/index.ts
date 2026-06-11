@@ -10,6 +10,7 @@ import {
   startListening,
   getStatus,
   getScreenshot,
+  debugMessages,
   close,
 } from "./whatsapp.js";
 
@@ -24,6 +25,17 @@ app.get("/health", (_req, res) => {
     version: process.env.npm_package_version ?? "unknown",
     ...status,
   });
+});
+
+// --- DOM message debug: dump raw structure of last N messages in the group ---
+app.get("/debug/messages", async (_req, res) => {
+  const group = (_req.query.group as string) ?? config.groupName;
+  if (!group) {
+    res.status(400).json({ error: "No group configured." });
+    return;
+  }
+  const data = await debugMessages(group, 10);
+  res.json(data);
 });
 
 // --- Page screenshot (debugging: see what WhatsApp Web is showing) ---

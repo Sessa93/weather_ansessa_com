@@ -282,6 +282,40 @@ export function startListening(
 }
 
 /**
+ * Open the group and return raw DOM data for the last N message rows —
+ * used to figure out correct selectors across WhatsApp Web UI versions.
+ */
+export async function debugMessages(
+  groupName: string,
+  limit = 10,
+): Promise<unknown> {
+  if (!page || !ready) return { error: "Not ready" };
+  const p = page;
+  return withPageLock(async () => {
+    await openChat(p, groupName);
+    // p.evaluate runs the function in the browser context (has DOM APIs).
+    // We cast through unknown to avoid TypeScript's lib:dom requirement.
+    const fn = new Function(
+      "lim",
+      `
+      const rows = [...document.querySelectorAll("[data-id]")].slice(-lim);
+      return rows.map(row => ({
+        dataId: row.getAttribute("data-id"),
+        classes: row.className,
+        hasMessageIn: !!row.querySelector("div.message-in"),
+        isMessageIn: row.classList.contains("message-in"),
+        prePlainText: row.querySelector("[data-pre-plain-text]")?.getAttribute("data-pre-plain-text") ?? null,
+        senderText: row.querySelector("span[dir='auto']")?.textContent ?? null,
+        text: row.querySelector("span.selectable-text")?.textContent ?? null,
+        outerHtmlSnippet: row.outerHTML.slice(0, 300),
+      }));
+    `,
+    ) as (lim: number) => unknown;
+    return p.evaluate(fn, limit);
+  });
+}
+
+/**
  * Capture a screenshot of the current page (for QR code viewing remotely).
  * Returns a PNG buffer, or null if the page isn't available.
  */
