@@ -82,6 +82,7 @@ If `WHATSAPP_GROUP_NAME` is set, the `group` field is optional.
 | `PORT`                 | `8085`                    | API server port                                      |
 | `WHATSAPP_GROUP_NAME`  | (empty)                   | Group the bot listens to and replies in              |
 | `TRIGGER_PREFIX`       | `@meteo`                  | Prefix that triggers the assistant (case-insensitive)|
+| `BOT_NAME`             | `Meteo Jerago Bot`        | Signature prepended to every outgoing message        |
 | `POLL_INTERVAL_MS`     | `3000`                    | How often the open chat is polled for new messages   |
 | `OPENAI_API_KEY`       | (required)                | OpenAI key for the agent and summaries               |
 | `OPENAI_MODEL`         | `gpt-4.1`                 | OpenAI model                                         |

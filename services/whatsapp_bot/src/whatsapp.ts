@@ -173,6 +173,9 @@ export async function sendMessage(
   }
   const p = page;
 
+  // Sign every outgoing message so readers know it came from the bot.
+  const signed = `🤖 *${config.botName}*\n${message}`;
+
   await withPageLock(async () => {
     console.log(`[whatsapp] Sending message to "${chatName}"...`);
     await openChat(p, chatName);
@@ -182,7 +185,7 @@ export async function sendMessage(
 
     // Type line by line: a plain Enter would send each line as a separate
     // message, Shift+Enter inserts a line break instead.
-    const lines = message.split("\n");
+    const lines = signed.split("\n");
     for (let i = 0; i < lines.length; i++) {
       if (i > 0) await p.keyboard.press("Shift+Enter");
       if (lines[i]) await p.keyboard.insertText(lines[i]);

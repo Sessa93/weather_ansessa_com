@@ -24,6 +24,9 @@ export const config = {
   /** Prefix that triggers the assistant in the group (case-insensitive). */
   triggerPrefix: process.env.TRIGGER_PREFIX ?? "@meteo",
 
+  /** Display name prepended to every outgoing message as a signature. */
+  botName: process.env.BOT_NAME ?? "Meteo Jerago Bot",
+
   /** How often to poll the open chat for new messages (ms). */
   pollIntervalMs: parseInt(process.env.POLL_INTERVAL_MS ?? "3000", 10),
 
