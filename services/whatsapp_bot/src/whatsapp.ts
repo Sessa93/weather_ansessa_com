@@ -319,13 +319,13 @@ export async function debugMessages(
       const rows = [...document.querySelectorAll("[data-id]")].slice(-lim);
       return rows.map(row => ({
         dataId: row.getAttribute("data-id"),
-        classes: row.className,
-        hasMessageIn: !!row.querySelector("div.message-in"),
-        isMessageIn: row.classList.contains("message-in"),
         prePlainText: row.querySelector("[data-pre-plain-text]")?.getAttribute("data-pre-plain-text") ?? null,
-        senderText: row.querySelector("span[dir='auto']")?.textContent ?? null,
-        text: row.querySelector("span.selectable-text")?.textContent ?? null,
-        outerHtmlSnippet: row.outerHTML.slice(0, 300),
+        innerText: row.innerText?.trim().slice(0, 200) ?? null,
+        selectableText: row.querySelector("span.selectable-text")?.innerText?.trim() ?? null,
+        spanDirLtr: row.querySelector("span[dir='ltr']")?.innerText?.trim() ?? null,
+        copyableText: row.querySelector(".copyable-text")?.innerText?.trim().slice(0, 100) ?? null,
+        spanCount: row.querySelectorAll("span").length,
+        outerHtmlSnippet: row.outerHTML.slice(0, 400),
       }));
     `,
     ) as (lim: number) => unknown;
