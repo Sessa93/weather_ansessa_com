@@ -227,27 +227,45 @@ export function startListening(
     await withPageLock(async () => {
       await openChat(p, groupName);
 
-      // Incoming messages carry the "message-in" class; the copyable-text
-      // wrapper's data-pre-plain-text holds "[HH:MM, D/M/YYYY] Sender: ".
-      const messages = await p.$$eval("div.message-in", (nodes) =>
-        nodes.map((node) => {
-          const row = node.closest("[data-id]");
-          const copyable = node.querySelector("[data-pre-plain-text]");
-          const textEl = node.querySelector("span.selectable-text");
+      // In the new WhatsApp Web UI there is no "message-in" class. Instead:
+      // - Incoming messages have data-pre-plain-text = "[HH:MM, D/M/YYYY] Sender: "
+      // - Outgoing messages (bot's own) have no data-pre-plain-text element.
+      // We select all [data-id] rows and filter by presence of that attribute.
+      const fn2 = new Function(
+        `
+        const rows = [...document.querySelectorAll("[data-id]")];
+        return rows.map(row => {
+          const prePlainEl = row.querySelector("[data-pre-plain-text]");
+          const pre = prePlainEl?.getAttribute("data-pre-plain-text") ?? null;
+          // Try stable class first, then any span with ltr direction, then innerText.
+          const textEl =
+            row.querySelector("span.selectable-text") ||
+            row.querySelector("span[dir='ltr']") ||
+            row.querySelector("span[dir='auto']");
+          const text =
+            textEl?.innerText?.trim() ||
+            textEl?.textContent?.trim() ||
+            "";
           return {
-            id: row?.getAttribute("data-id") ?? "",
-            pre: copyable?.getAttribute("data-pre-plain-text") ?? "",
-            text: textEl?.textContent ?? "",
+            id: row.getAttribute("data-id") ?? "",
+            pre,
+            text,
           };
-        }),
-      );
+        }).filter(m => m.pre !== null); // keep only incoming messages
+      `,
+      ) as () => Array<{ id: string; pre: string; text: string }>;
+
+      const messages = await p.evaluate(fn2);
 
       for (const m of messages) {
         if (!m.id || seen.has(m.id)) continue;
         seen.add(m.id);
         if (!primed) continue; // skip history present at startup
 
-        const sender = m.pre.replace(/^\[[^\]]*\]\s*/, "").replace(/:\s*$/, "");
+        // pre = "[HH:MM, D/M/YYYY] Sender: "
+        const sender = (m.pre ?? "")
+          .replace(/^\[[^\]]*\]\s*/, "")
+          .replace(/:\s*$/, "");
         if (m.text.trim()) {
           onMessage({ id: m.id, sender: sender || "unknown", text: m.text });
         }
