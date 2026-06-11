@@ -237,10 +237,9 @@ export function startListening(
         return rows.map(row => {
           const prePlainEl = row.querySelector("[data-pre-plain-text]");
           const pre = prePlainEl?.getAttribute("data-pre-plain-text") ?? null;
-          // Try stable class first, then any span with ltr direction, then innerText.
           const textEl =
-            row.querySelector("span.selectable-text") ||
             row.querySelector("span[dir='ltr']") ||
+            row.querySelector("span.selectable-text") ||
             row.querySelector("span[dir='auto']");
           const text =
             textEl?.innerText?.trim() ||
