@@ -1,6 +1,26 @@
 import { chromium, type BrowserContext, type Page } from "playwright";
-import { existsSync, mkdirSync } from "fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
+import { join } from "path";
 import { config } from "./config.js";
+
+const SEEN_FILE = join(config.authDir, "seen-messages.json");
+
+function loadSeen(): Set<string> {
+  try {
+    const ids = JSON.parse(readFileSync(SEEN_FILE, "utf8")) as string[];
+    return new Set(ids);
+  } catch {
+    return new Set();
+  }
+}
+
+function saveSeen(seen: Set<string>): void {
+  try {
+    writeFileSync(SEEN_FILE, JSON.stringify([...seen]));
+  } catch (err) {
+    console.error("[whatsapp] Failed to save seen set:", err);
+  }
+}
 
 let context: BrowserContext | null = null;
 let page: Page | null = null;
@@ -217,8 +237,9 @@ export function startListening(
   if (listening) return;
   listening = true;
 
-  const seen = new Set<string>();
-  let primed = false;
+  // Load previously-seen IDs from disk so restarts never re-process old messages.
+  const seen = loadSeen();
+  console.log(`[whatsapp] Loaded ${seen.size} seen message ID(s) from disk.`);
 
   const poll = async (): Promise<void> => {
     if (!page || !ready) return;
@@ -259,7 +280,6 @@ export function startListening(
       for (const m of messages) {
         if (!m.id || seen.has(m.id)) continue;
         seen.add(m.id);
-        if (!primed) continue; // skip history present at startup
 
         // pre = "[HH:MM, D/M/YYYY] Sender: "
         const sender = (m.pre ?? "")
@@ -269,7 +289,9 @@ export function startListening(
           onMessage({ id: m.id, sender: sender || "unknown", text: m.text });
         }
       }
-      primed = true;
+
+      // Persist seen set so restarts don't re-process old messages.
+      saveSeen(seen);
 
       // Bound memory: data-ids of long-gone messages can be dropped.
       if (seen.size > 2000) {
