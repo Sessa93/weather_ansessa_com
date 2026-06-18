@@ -1,5 +1,11 @@
 import { chromium, type BrowserContext, type Page } from "playwright";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  renameSync,
+  writeFileSync,
+} from "fs";
 import { join } from "path";
 import { config } from "./config.js";
 
@@ -14,9 +20,13 @@ function loadSeen(): Set<string> {
   }
 }
 
+// Write to a temp file and rename over the target so a process kill mid-write
+// can never leave seen-messages.json truncated or corrupt.
 function saveSeen(seen: Set<string>): void {
   try {
-    writeFileSync(SEEN_FILE, JSON.stringify([...seen]));
+    const tmp = `${SEEN_FILE}.tmp`;
+    writeFileSync(tmp, JSON.stringify([...seen]));
+    renameSync(tmp, SEEN_FILE);
   } catch (err) {
     console.error("[whatsapp] Failed to save seen set:", err);
   }
@@ -151,14 +161,25 @@ const MESSAGE_BOX_SELECTOR = [
   'div[contenteditable="true"][aria-placeholder="Scrivi un messaggio"]',
 ].join(", ");
 
+// Escape a value interpolated into a double-quoted CSS attribute selector so
+// a stray `"` (e.g. from /debug/messages's unauthenticated `group` query
+// param) can't break out of the attribute value.
+function escapeAttr(value: string): string {
+  return value.replace(/[\\"]/g, "\\$&");
+}
+
 /** Open a chat by display name: click its sidebar row, searching if needed. */
 async function openChat(p: Page, chatName: string): Promise<void> {
+  const safeName = escapeAttr(chatName);
+
   // Already open? The conversation header shows the chat title.
-  const header = p.locator(`#main header span[title="${chatName}"]`);
+  const header = p.locator(`#main header span[title="${safeName}"]`);
   if (await header.count()) return;
 
-  // Fast path: the chat row is already visible in the sidebar list.
-  const row = p.locator(`span[title="${chatName}"]`).first();
+  // Fast path: the chat row is already visible in the sidebar list. Scoped
+  // to #side so a same-titled element elsewhere on the page (e.g. a quoted
+  // message) can't be matched instead.
+  const row = p.locator(`#side span[title="${safeName}"]`).first();
   if (!(await row.isVisible().catch(() => false))) {
     const searchBox = p
       .locator(SEARCH_BOX_SELECTOR)
@@ -224,6 +245,41 @@ export interface IncomingMessage {
   text: string;
 }
 
+// Shared building blocks for the two browser-side message-row walkers (the
+// hoisted fn2 below and debugMessages's fn) so a selector fix only has to
+// happen in one place instead of two independently-drifting copies.
+const ROW_QUERY_JS = `document.querySelectorAll(${JSON.stringify("[data-id]")})`;
+const PRE_PLAIN_TEXT_QUERY_JS = `row.querySelector(${JSON.stringify("[data-pre-plain-text]")})`;
+const TEXT_EXTRACT_JS = ["span[dir='ltr']", "span.selectable-text", "span[dir='auto']"]
+  .map((sel) => `row.querySelector(${JSON.stringify(sel)})`)
+  .join(" || ");
+
+// In the new WhatsApp Web UI there is no "message-in" class. Instead:
+// - Incoming messages have data-pre-plain-text = "[HH:MM, D/M/YYYY] Sender: "
+// - Outgoing messages (bot's own) have no data-pre-plain-text element.
+// We select all [data-id] rows and filter by presence of that attribute.
+// Built once at module load: this script has no per-tick dependencies, so
+// re-parsing it on every poll tick would be wasted work.
+const fn2 = new Function(
+  `
+  const rows = [...${ROW_QUERY_JS}];
+  return rows.map(row => {
+    const prePlainEl = ${PRE_PLAIN_TEXT_QUERY_JS};
+    const pre = prePlainEl?.getAttribute("data-pre-plain-text") ?? null;
+    const textEl = ${TEXT_EXTRACT_JS};
+    const text =
+      textEl?.innerText?.trim() ||
+      textEl?.textContent?.trim() ||
+      "";
+    return {
+      id: row.getAttribute("data-id") ?? "",
+      pre,
+      text,
+    };
+  }).filter(m => m.pre !== null); // keep only incoming messages
+`,
+) as () => Array<{ id: string; pre: string; text: string }>;
+
 let listening = false;
 
 /**
@@ -237,49 +293,35 @@ export function startListening(
   if (listening) return;
   listening = true;
 
-  // Load previously-seen IDs from disk so restarts never re-process old messages.
+  // Load previously-seen IDs from disk so restarts never re-process old
+  // messages. If no state file exists yet (first-ever deploy, or it was lost
+  // to a non-atomic write race in the past), prime on the first poll instead:
+  // record what's currently on screen as seen without dispatching it, the
+  // same protection the old in-memory `primed` flag gave every restart.
+  const seenFileExisted = existsSync(SEEN_FILE);
   const seen = loadSeen();
-  console.log(`[whatsapp] Loaded ${seen.size} seen message ID(s) from disk.`);
+  let primed = seenFileExisted;
+  console.log(
+    `[whatsapp] Loaded ${seen.size} seen message ID(s) from disk` +
+      (primed ? "." : " (no prior state — priming on first poll)."),
+  );
 
   const poll = async (): Promise<void> => {
     if (!page || !ready) return;
-    const p = page;
 
     await withPageLock(async () => {
+      if (!page) return; // may have been closed while queued behind the lock
+      const p = page;
       await openChat(p, groupName);
-
-      // In the new WhatsApp Web UI there is no "message-in" class. Instead:
-      // - Incoming messages have data-pre-plain-text = "[HH:MM, D/M/YYYY] Sender: "
-      // - Outgoing messages (bot's own) have no data-pre-plain-text element.
-      // We select all [data-id] rows and filter by presence of that attribute.
-      const fn2 = new Function(
-        `
-        const rows = [...document.querySelectorAll("[data-id]")];
-        return rows.map(row => {
-          const prePlainEl = row.querySelector("[data-pre-plain-text]");
-          const pre = prePlainEl?.getAttribute("data-pre-plain-text") ?? null;
-          const textEl =
-            row.querySelector("span[dir='ltr']") ||
-            row.querySelector("span.selectable-text") ||
-            row.querySelector("span[dir='auto']");
-          const text =
-            textEl?.innerText?.trim() ||
-            textEl?.textContent?.trim() ||
-            "";
-          return {
-            id: row.getAttribute("data-id") ?? "",
-            pre,
-            text,
-          };
-        }).filter(m => m.pre !== null); // keep only incoming messages
-      `,
-      ) as () => Array<{ id: string; pre: string; text: string }>;
 
       const messages = await p.evaluate(fn2);
 
+      let added = false;
       for (const m of messages) {
         if (!m.id || seen.has(m.id)) continue;
         seen.add(m.id);
+        added = true;
+        if (!primed) continue; // skip history present at this first poll
 
         // pre = "[HH:MM, D/M/YYYY] Sender: "
         const sender = (m.pre ?? "")
@@ -289,14 +331,18 @@ export function startListening(
           onMessage({ id: m.id, sender: sender || "unknown", text: m.text });
         }
       }
-
-      // Persist seen set so restarts don't re-process old messages.
-      saveSeen(seen);
+      primed = true;
 
       // Bound memory: data-ids of long-gone messages can be dropped.
+      let trimmed = false;
       if (seen.size > 2000) {
         for (const id of [...seen].slice(0, 1000)) seen.delete(id);
+        trimmed = true;
       }
+
+      // Persist seen set so restarts don't re-process old messages — only
+      // when it actually changed, to avoid a write every idle tick.
+      if (added || trimmed) saveSeen(seen);
     }).catch((err) => {
       console.error(
         "[whatsapp] Poll failed:",
@@ -320,6 +366,27 @@ export function startListening(
   );
 }
 
+// Built once: like fn2, this has no per-call dependencies (the row limit is
+// passed as an evaluate() argument, not baked into the source). p.evaluate
+// runs the function in the browser context (has DOM APIs) — we cast through
+// unknown to avoid TypeScript's lib:dom requirement.
+const debugFn = new Function(
+  "lim",
+  `
+  const rows = [...${ROW_QUERY_JS}].slice(-lim);
+  return rows.map(row => ({
+    dataId: row.getAttribute("data-id"),
+    prePlainText: (${PRE_PLAIN_TEXT_QUERY_JS})?.getAttribute("data-pre-plain-text") ?? null,
+    innerText: row.innerText?.trim().slice(0, 200) ?? null,
+    selectableText: row.querySelector("span.selectable-text")?.innerText?.trim() ?? null,
+    spanDirLtr: row.querySelector("span[dir='ltr']")?.innerText?.trim() ?? null,
+    copyableText: row.querySelector(".copyable-text")?.innerText?.trim().slice(0, 100) ?? null,
+    spanCount: row.querySelectorAll("span").length,
+    outerHtmlSnippet: row.outerHTML.slice(0, 400),
+  }));
+`,
+) as (lim: number) => unknown;
+
 /**
  * Open the group and return raw DOM data for the last N message rows —
  * used to figure out correct selectors across WhatsApp Web UI versions.
@@ -329,28 +396,11 @@ export async function debugMessages(
   limit = 10,
 ): Promise<unknown> {
   if (!page || !ready) return { error: "Not ready" };
-  const p = page;
   return withPageLock(async () => {
+    if (!page) return { error: "Not ready" };
+    const p = page;
     await openChat(p, groupName);
-    // p.evaluate runs the function in the browser context (has DOM APIs).
-    // We cast through unknown to avoid TypeScript's lib:dom requirement.
-    const fn = new Function(
-      "lim",
-      `
-      const rows = [...document.querySelectorAll("[data-id]")].slice(-lim);
-      return rows.map(row => ({
-        dataId: row.getAttribute("data-id"),
-        prePlainText: row.querySelector("[data-pre-plain-text]")?.getAttribute("data-pre-plain-text") ?? null,
-        innerText: row.innerText?.trim().slice(0, 200) ?? null,
-        selectableText: row.querySelector("span.selectable-text")?.innerText?.trim() ?? null,
-        spanDirLtr: row.querySelector("span[dir='ltr']")?.innerText?.trim() ?? null,
-        copyableText: row.querySelector(".copyable-text")?.innerText?.trim().slice(0, 100) ?? null,
-        spanCount: row.querySelectorAll("span").length,
-        outerHtmlSnippet: row.outerHTML.slice(0, 400),
-      }));
-    `,
-    ) as (lim: number) => unknown;
-    return p.evaluate(fn, limit);
+    return p.evaluate(debugFn, limit);
   });
 }
 
@@ -360,16 +410,25 @@ export async function debugMessages(
  */
 export async function getScreenshot(): Promise<Buffer | null> {
   if (!page) return null;
-  return page.screenshot({ type: "png" }) as Promise<Buffer>;
+  return withPageLock(async () => {
+    if (!page) return null;
+    return page.screenshot({ type: "png" }) as Promise<Buffer>;
+  });
 }
 
-/** Graceful shutdown. */
+/**
+ * Graceful shutdown. Goes through the same lock as every other page
+ * operation so it waits for whatever's in-flight (a poll, a send, a
+ * screenshot) instead of closing the context out from under it.
+ */
 export async function close(): Promise<void> {
   ready = false;
-  if (context) {
-    await context.close().catch(() => {});
-    context = null;
-    page = null;
-  }
+  await withPageLock(async () => {
+    if (context) {
+      await context.close().catch(() => {});
+      context = null;
+      page = null;
+    }
+  });
   console.log("[whatsapp] Browser closed.");
 }

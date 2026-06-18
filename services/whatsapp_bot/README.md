@@ -58,8 +58,20 @@ Messages without the prefix are ignored.
 ### `GET /health`
 
 ```json
-{ "ok": true, "ready": true, "qrVisible": false, "authenticated": true }
+{ "ok": true, "version": "0.2.8", "ready": true, "qrVisible": false, "authenticated": true }
 ```
+
+### `GET /debug/messages?group=<name>`
+
+Returns the raw DOM data (attributes tried, extracted text) for the last 10
+message rows in `group` (defaults to `WHATSAPP_GROUP_NAME`). For diagnosing
+selector breakage when WhatsApp Web's markup changes.
+
+### `GET /screenshot`
+
+Returns a PNG screenshot of the current page — the same image `/qr` serves,
+but without the "already authenticated" short-circuit, so it also works to
+see what the bot's session looks like after login.
 
 ### `GET /qr`
 

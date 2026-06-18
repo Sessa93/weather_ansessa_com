@@ -25,7 +25,7 @@ export const config = {
   triggerPrefix: process.env.TRIGGER_PREFIX ?? "@meteo",
 
   /** Display name prepended to every outgoing message as a signature. */
-  botName: process.env.BOT_NAME ?? "Meteo Jerago Bot",
+  botName: process.env.BOT_NAME || "Meteo Jerago Bot",
 
   /** How often to poll the open chat for new messages (ms). */
   pollIntervalMs: parseInt(process.env.POLL_INTERVAL_MS ?? "3000", 10),
@@ -44,9 +44,13 @@ export const config = {
   dailySummaryCron: process.env.DAILY_SUMMARY_CRON ?? "0 8 * * *",
   timezone: process.env.TZ ?? "Europe/Rome",
   // Comma-separated WhatsApp group names to receive the daily summary and
-  // alerts. Defaults to the main group if set.
-  dailyGroups: (process.env.DAILY_SUMMARY_GROUPS ??
-    process.env.WHATSAPP_GROUP_NAME ??
+  // alerts. Defaults to the main group if set. `||` (not `??`): Docker
+  // Compose's ${VAR:-default} substitution always supplies a defined,
+  // possibly-empty string, so an unset DAILY_SUMMARY_GROUPS arrives here as
+  // "" rather than undefined — `??` would never reach the WHATSAPP_GROUP_NAME
+  // fallback.
+  dailyGroups: (process.env.DAILY_SUMMARY_GROUPS ||
+    process.env.WHATSAPP_GROUP_NAME ||
     "")
     .split(",")
     .map((s) => s.trim())

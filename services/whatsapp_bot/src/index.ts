@@ -27,27 +27,51 @@ app.get("/health", (_req, res) => {
   });
 });
 
+// Express parses a repeated query key (?group=A&group=B) as a string[], not
+// a string — take the first string value rather than trusting a blind cast.
+function firstQueryString(v: unknown): string | undefined {
+  if (typeof v === "string" && v) return v;
+  if (Array.isArray(v) && typeof v[0] === "string" && v[0]) return v[0];
+  return undefined;
+}
+
 // --- DOM message debug: dump raw structure of last N messages in the group ---
 app.get("/debug/messages", async (_req, res) => {
-  const group = (_req.query.group as string) ?? config.groupName;
+  const group = firstQueryString(_req.query.group) ?? config.groupName;
   if (!group) {
     res.status(400).json({ error: "No group configured." });
     return;
   }
-  const data = await debugMessages(group, 10);
-  res.json(data);
+  try {
+    const data = await debugMessages(group, 10);
+    res.json(data);
+  } catch (err) {
+    console.error("[api] /debug/messages failed:", err);
+    res.status(500).json({
+      error: "Failed to read messages.",
+      detail: err instanceof Error ? err.message : String(err),
+    });
+  }
 });
 
 // --- Page screenshot (debugging: see what WhatsApp Web is showing) ---
 app.get("/screenshot", async (_req, res) => {
-  const png = await getScreenshot();
-  if (!png) {
-    res.status(503).json({ error: "Browser not ready." });
-    return;
+  try {
+    const png = await getScreenshot();
+    if (!png) {
+      res.status(503).json({ error: "Browser not ready." });
+      return;
+    }
+    res.setHeader("Content-Type", "image/png");
+    res.setHeader("Cache-Control", "no-store");
+    res.send(png);
+  } catch (err) {
+    console.error("[api] /screenshot failed:", err);
+    res.status(500).json({
+      error: "Failed to capture screenshot.",
+      detail: err instanceof Error ? err.message : String(err),
+    });
   }
-  res.setHeader("Content-Type", "image/png");
-  res.setHeader("Cache-Control", "no-store");
-  res.send(png);
 });
 
 // --- QR code screenshot (for remote auth) ---
