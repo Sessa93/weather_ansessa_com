@@ -8,7 +8,7 @@ Feature parity with the Telegram bot:
 - **`@meteo previsioni`** — today's forecast summary on demand (same as Telegram's `/previsioni`).
 - **Daily summary** — an LLM-written morning message is broadcast to the configured groups on a cron schedule (default 08:00). It includes a **recap of yesterday's actuals** (from the station database: min/max temperature, total rain, wind) followed by **today's forecast**.
 - **Weather alerts** — every 5 minutes the latest reading is checked against thresholds (extreme heat, freeze, high wind, heavy rain, low pressure) and new alerts are broadcast.
-- **HTTP API** — `POST /send` for arbitrary messages, `GET /code` / `GET /qr` for remote authentication.
+- **HTTP API** — `POST /send` for arbitrary messages, `POST /daily-summary` to retrigger the morning broadcast, `GET /code` / `GET /qr` for remote authentication.
 
 ## How it works
 
@@ -97,6 +97,19 @@ curl -X POST http://localhost:8085/send \
 ```
 
 If `WHATSAPP_GROUP_NAME` is set, the `group` field is optional.
+
+### `POST /daily-summary`
+
+Manually triggers the morning summary broadcast (yesterday's recap + today's
+forecast) to all configured groups — the same action the cron runs.
+
+```bash
+curl -X POST http://localhost:8085/daily-summary
+```
+
+```json
+{ "ok": true, "groups": ["Famiglia"] }
+```
 
 ## Environment variables
 

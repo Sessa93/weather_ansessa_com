@@ -161,6 +161,35 @@ app.post("/send", async (req, res) => {
   }
 });
 
+// --- Manually trigger the daily summary broadcast (same as the cron) ---
+app.post("/daily-summary", async (_req, res) => {
+  const status = getStatus();
+  if (!status.ready) {
+    res.status(503).json({
+      error: "WhatsApp Web is not ready yet.",
+      ...status,
+    });
+    return;
+  }
+  if (config.dailyGroups.length === 0) {
+    res.status(400).json({
+      error:
+        "No groups configured. Set DAILY_SUMMARY_GROUPS or WHATSAPP_GROUP_NAME.",
+    });
+    return;
+  }
+  try {
+    await sendDailySummary();
+    res.json({ ok: true, groups: config.dailyGroups });
+  } catch (err) {
+    console.error("[api] /daily-summary failed:", err);
+    res.status(500).json({
+      error: "Failed to send daily summary.",
+      detail: err instanceof Error ? err.message : String(err),
+    });
+  }
+});
+
 // --- Inbound messages: trigger-prefixed questions go to the LLM agent ---
 const PREVISIONI_RE = /^[!/]?previsioni\b/i;
 
