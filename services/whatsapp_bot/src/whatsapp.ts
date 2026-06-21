@@ -89,6 +89,10 @@ export async function init(): Promise<void> {
     args.push(
       `--remote-debugging-port=${config.remoteDebugPort}`,
       "--remote-debugging-address=0.0.0.0",
+      // Required since Chromium 111: without an allowed origin the CDP
+      // WebSocket handshake from chrome://inspect is rejected (403), so the
+      // target lists but the inspector can't attach.
+      "--remote-allow-origins=*",
     );
     console.log(
       `[whatsapp] CDP remote debugging on port ${config.remoteDebugPort} ` +
