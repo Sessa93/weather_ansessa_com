@@ -78,6 +78,7 @@ jobs:
       - name: Deploy WhatsApp bot env vars
         env:
           WA_GROUP_NAME: ${{ vars.WHATSAPP_GROUP_NAME }}
+          WA_PHONE_NUMBER: ${{ secrets.WHATSAPP_PHONE_NUMBER }}
         run: |
           set -euo pipefail
 
@@ -87,6 +88,7 @@ jobs:
 
           {
             [ -n "${WA_GROUP_NAME}" ] && echo "WHATSAPP_GROUP_NAME=${WA_GROUP_NAME}"
+            [ -n "${WA_PHONE_NUMBER}" ] && echo "WHATSAPP_PHONE_NUMBER=${WA_PHONE_NUMBER}"
             true
           } > .env.wa
 
