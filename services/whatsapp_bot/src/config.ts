@@ -15,6 +15,15 @@ export const config = {
   /** WhatsApp group name the bot listens to and replies in. */
   groupName: process.env.WHATSAPP_GROUP_NAME ?? "",
 
+  /**
+   * Phone number (international format, e.g. "393331234567") used to log in
+   * with a pairing code instead of scanning a QR. When set, the bot requests
+   * an 8-character linking code you enter on your phone
+   * (Linked devices → Link a device → Link with phone number instead).
+   * Leave empty to fall back to QR-code authentication.
+   */
+  phoneNumber: (process.env.WHATSAPP_PHONE_NUMBER ?? "").replace(/[^0-9]/g, ""),
+
   /** Run Chromium headless (true in Docker, set to false for local QR scan). */
   headless: (process.env.HEADLESS ?? "true") === "true",
 

@@ -9,6 +9,7 @@ import {
   sendMessage,
   startListening,
   getStatus,
+  getPairingCode,
   getScreenshot,
   debugMessages,
   close,
@@ -72,6 +73,30 @@ app.get("/screenshot", async (_req, res) => {
       detail: err instanceof Error ? err.message : String(err),
     });
   }
+});
+
+// --- Pairing code (for phone-number auth) ---
+app.get("/code", (_req, res) => {
+  const status = getStatus();
+  if (status.authenticated) {
+    res.json({ ok: true, message: "Already authenticated — no code needed." });
+    return;
+  }
+  const code = getPairingCode();
+  if (!code) {
+    res.status(503).json({
+      error:
+        "No pairing code yet. Set WHATSAPP_PHONE_NUMBER and wait a few seconds, or use /qr.",
+    });
+    return;
+  }
+  res.json({
+    ok: true,
+    code,
+    instructions:
+      "On your phone: Settings → Linked devices → Link a device → " +
+      '"Link with phone number instead", then enter this code.',
+  });
 });
 
 // --- QR code screenshot (for remote auth) ---

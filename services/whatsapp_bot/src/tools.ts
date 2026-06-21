@@ -1,6 +1,73 @@
 import type OpenAI from "openai";
 import { pool } from "./db.js";
+import { config } from "./config.js";
 import { fetchForecast } from "./forecast.js";
+
+const SUMMARY_AGGREGATES = `
+  MIN(outside_temp) temp_min, MAX(outside_temp) temp_max, AVG(outside_temp) temp_avg,
+  MIN(humidity) hum_min, MAX(humidity) hum_max, AVG(humidity) hum_avg,
+  AVG(wind_speed) wind_avg, MAX(wind_gust) wind_gust_max,
+  SUM(rain) rain_total, MAX(rain_rate) rain_rate_max,
+  MIN(barometer) baro_min, MAX(barometer) baro_max,
+  COUNT(*) n`;
+
+interface SummaryRow {
+  temp_min: number | null;
+  temp_max: number | null;
+  temp_avg: number | null;
+  hum_min: number | null;
+  hum_max: number | null;
+  hum_avg: number | null;
+  wind_avg: number | null;
+  wind_gust_max: number | null;
+  rain_total: number | null;
+  rain_rate_max: number | null;
+  baro_min: number | null;
+  baro_max: number | null;
+  n: string;
+}
+
+function shapeSummary(s: SummaryRow) {
+  return {
+    samples: Number(s.n),
+    temperature_c: {
+      min: round(s.temp_min),
+      max: round(s.temp_max),
+      avg: round(s.temp_avg),
+    },
+    humidity_pct: {
+      min: round(s.hum_min, 0),
+      max: round(s.hum_max, 0),
+      avg: round(s.hum_avg, 0),
+    },
+    wind_kmh: { avg: round(s.wind_avg), max_gust: round(s.wind_gust_max) },
+    rain_mm: {
+      total: round(s.rain_total, 2),
+      max_rate_mmh: round(s.rain_rate_max, 2),
+    },
+    barometer_mbar: { min: round(s.baro_min), max: round(s.baro_max) },
+  };
+}
+
+/**
+ * Aggregate one calendar day's actuals in the station timezone.
+ * `offsetDays` counts back from today (1 = yesterday). Returns null if the day
+ * has no readings.
+ */
+export async function summarizeDay(
+  offsetDays: number,
+): Promise<ReturnType<typeof shapeSummary> | null> {
+  const { rows } = await pool.query<SummaryRow>(
+    `SELECT ${SUMMARY_AGGREGATES}
+     FROM weather_readings
+     WHERE (timestamp AT TIME ZONE $1)::date
+           = ((NOW() AT TIME ZONE $1)::date - $2::int)`,
+    [config.timezone, offsetDays],
+  );
+  const s = rows[0];
+  if (!s || Number(s.n) === 0) return null;
+  return shapeSummary(s);
+}
 
 /** OpenAI function-tool schemas exposed to the model. */
 export const toolDefinitions: OpenAI.Chat.Completions.ChatCompletionTool[] = [
@@ -103,14 +170,8 @@ async function getHistoricalSummary(args: {
   start: string;
   end: string;
 }): Promise<unknown> {
-  const { rows } = await pool.query(
-    `SELECT
-       MIN(outside_temp) temp_min, MAX(outside_temp) temp_max, AVG(outside_temp) temp_avg,
-       MIN(humidity) hum_min, MAX(humidity) hum_max, AVG(humidity) hum_avg,
-       AVG(wind_speed) wind_avg, MAX(wind_gust) wind_gust_max,
-       SUM(rain) rain_total, MAX(rain_rate) rain_rate_max,
-       MIN(barometer) baro_min, MAX(barometer) baro_max,
-       COUNT(*) n
+  const { rows } = await pool.query<SummaryRow>(
+    `SELECT ${SUMMARY_AGGREGATES}
      FROM weather_readings
      WHERE timestamp >= $1 AND timestamp < $2`,
     [args.start, args.end],
@@ -123,26 +184,7 @@ async function getHistoricalSummary(args: {
       end: args.end,
     };
   }
-  return {
-    range: { start: args.start, end: args.end },
-    samples: Number(s.n),
-    temperature_c: {
-      min: round(s.temp_min),
-      max: round(s.temp_max),
-      avg: round(s.temp_avg),
-    },
-    humidity_pct: {
-      min: round(s.hum_min, 0),
-      max: round(s.hum_max, 0),
-      avg: round(s.hum_avg, 0),
-    },
-    wind_kmh: { avg: round(s.wind_avg), max_gust: round(s.wind_gust_max) },
-    rain_mm: {
-      total: round(s.rain_total, 2),
-      max_rate_mmh: round(s.rain_rate_max, 2),
-    },
-    barometer_mbar: { min: round(s.baro_min), max: round(s.baro_max) },
-  };
+  return { range: { start: args.start, end: args.end }, ...shapeSummary(s) };
 }
 
 async function getForecast(args: { days?: number }): Promise<unknown> {

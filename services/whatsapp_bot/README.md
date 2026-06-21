@@ -6,34 +6,37 @@ Feature parity with the Telegram bot:
 
 - **AI assistant** — group members can ask weather questions (current conditions, history, forecast) by prefixing a message with the trigger (default `@meteo`). An LLM agent with database/forecast tools answers in Italian, with per-sender conversation memory.
 - **`@meteo previsioni`** — today's forecast summary on demand (same as Telegram's `/previsioni`).
-- **Daily summary** — an LLM-written morning forecast is broadcast to the configured groups on a cron schedule (default 08:00).
+- **Daily summary** — an LLM-written morning message is broadcast to the configured groups on a cron schedule (default 08:00). It includes a **recap of yesterday's actuals** (from the station database: min/max temperature, total rain, wind) followed by **today's forecast**.
 - **Weather alerts** — every 5 minutes the latest reading is checked against thresholds (extreme heat, freeze, high wind, heavy rain, low pressure) and new alerts are broadcast.
-- **HTTP API** — `POST /send` for arbitrary messages, `GET /qr` for remote QR authentication.
+- **HTTP API** — `POST /send` for arbitrary messages, `GET /code` / `GET /qr` for remote authentication.
 
 ## How it works
 
 1. Playwright launches Chromium and opens `web.whatsapp.com`
-2. On first run, a QR code appears — scan it with your phone
-3. The browser session is persisted to a Docker volume (`whatsapp-auth`) so subsequent restarts skip QR scanning
+2. On first run the device must be linked — by **pairing code** (preferred) or QR (see below)
+3. The browser session is persisted to a Docker volume (`whatsapp-auth`) so subsequent restarts skip authentication
 4. The bot keeps the configured group open and polls it for new incoming messages; replies and broadcasts are typed into the chat
 
-## First-time setup (QR authentication)
+## First-time setup (authentication)
 
-You need to scan the QR code once. The easiest way:
+### Pairing code (recommended — no QR scan)
 
-```bash
-# Run locally with a visible browser window
-cd services/whatsapp_bot
-npm install
-HEADLESS=false OPENAI_API_KEY=... DATABASE_URL=... npm start
-```
+Set `WHATSAPP_PHONE_NUMBER` to the linked phone's number in international format,
+digits only (e.g. `393331234567`). On startup the bot enters that number into
+WhatsApp Web and obtains an 8-character linking code. Read it from:
 
-Scan the QR code with your phone, then Ctrl+C. The session is saved to `./auth/`.
+- the container logs (`PAIRING CODE: XXXX-XXXX`), or
+- `GET http://localhost:8085/code`
 
-For Docker, the auth state is stored in the `whatsapp-auth` volume. You can either:
+Then on the phone: **Settings → Linked devices → Link a device → "Link with
+phone number instead"**, and enter the code. The session is saved to the
+`whatsapp-auth` volume, so this is a one-time step.
 
-- Run locally first (as above), then copy the `auth/` dir into the volume
-- Or open `http://localhost:8085/qr` in a browser and scan the rendered QR
+### QR code (fallback)
+
+Leave `WHATSAPP_PHONE_NUMBER` empty to use QR instead. Either run locally with a
+visible browser (`HEADLESS=false … npm start`) and scan it, or open
+`http://localhost:8085/qr` to scan the rendered QR remotely.
 
 ## Docker Compose
 
@@ -73,6 +76,14 @@ Returns a PNG screenshot of the current page — the same image `/qr` serves,
 but without the "already authenticated" short-circuit, so it also works to
 see what the bot's session looks like after login.
 
+### `GET /code`
+
+Returns the pairing code for phone-number authentication when one is pending:
+
+```json
+{ "ok": true, "code": "ABCD-1234", "instructions": "On your phone: …" }
+```
+
 ### `GET /qr`
 
 Returns a PNG screenshot of the QR code when authentication is pending.
@@ -89,21 +100,22 @@ If `WHATSAPP_GROUP_NAME` is set, the `group` field is optional.
 
 ## Environment variables
 
-| Variable               | Default                   | Description                                          |
-| ---------------------- | ------------------------- | ---------------------------------------------------- |
-| `PORT`                 | `8085`                    | API server port                                      |
-| `WHATSAPP_GROUP_NAME`  | (empty)                   | Group the bot listens to and replies in              |
-| `TRIGGER_PREFIX`       | `@meteo`                  | Prefix that triggers the assistant (case-insensitive)|
-| `BOT_NAME`             | `Meteo Jerago Bot`        | Signature prepended to every outgoing message        |
-| `POLL_INTERVAL_MS`     | `3000`                    | How often the open chat is polled for new messages   |
-| `OPENAI_API_KEY`       | (required)                | OpenAI key for the agent and summaries               |
-| `OPENAI_MODEL`         | `gpt-4.1`                 | OpenAI model                                         |
-| `DATABASE_URL`         | (required)                | PostgreSQL with `weather_readings`                   |
-| `STATION_NAME`         | `Jerago con Orago, Italy` | Station display name                                 |
-| `STATION_LAT`/`_LON`   | `45.71` / `8.79`          | Coordinates for the Open-Meteo forecast              |
-| `DAILY_SUMMARY_CRON`   | `0 8 * * *`               | Cron for the morning summary                         |
-| `DAILY_SUMMARY_GROUPS` | `WHATSAPP_GROUP_NAME`     | Comma-separated groups for summaries and alerts      |
-| `TZ`                   | `Europe/Rome`             | Timezone for crons and timestamps                    |
-| `HEADLESS`             | `true`                    | Run Chromium headless                                |
-| `AUTH_DIR`             | `/data/auth`              | Path to persist browser session                      |
-| `PAGE_LOAD_TIMEOUT`    | `60000`                   | WhatsApp Web load timeout (ms)                       |
+| Variable                | Default                   | Description                                           |
+| ----------------------- | ------------------------- | ----------------------------------------------------- |
+| `PORT`                  | `8085`                    | API server port                                       |
+| `WHATSAPP_GROUP_NAME`   | (empty)                   | Group the bot listens to and replies in               |
+| `WHATSAPP_PHONE_NUMBER` | (empty)                   | Linked phone, intl digits; empty = use QR instead     |
+| `TRIGGER_PREFIX`        | `@meteo`                  | Prefix that triggers the assistant (case-insensitive) |
+| `BOT_NAME`              | `Meteo Jerago Bot`        | Signature prepended to every outgoing message         |
+| `POLL_INTERVAL_MS`      | `3000`                    | How often the open chat is polled for new messages    |
+| `OPENAI_API_KEY`        | (required)                | OpenAI key for the agent and summaries                |
+| `OPENAI_MODEL`          | `gpt-4.1`                 | OpenAI model                                          |
+| `DATABASE_URL`          | (required)                | PostgreSQL with `weather_readings`                    |
+| `STATION_NAME`          | `Jerago con Orago, Italy` | Station display name                                  |
+| `STATION_LAT`/`_LON`    | `45.71` / `8.79`          | Coordinates for the Open-Meteo forecast               |
+| `DAILY_SUMMARY_CRON`    | `0 8 * * *`               | Cron for the morning summary                          |
+| `DAILY_SUMMARY_GROUPS`  | `WHATSAPP_GROUP_NAME`     | Comma-separated groups for summaries and alerts       |
+| `TZ`                    | `Europe/Rome`             | Timezone for crons and timestamps                     |
+| `HEADLESS`              | `true`                    | Run Chromium headless                                 |
+| `AUTH_DIR`              | `/data/auth`              | Path to persist browser session                       |
+| `PAGE_LOAD_TIMEOUT`     | `60000`                   | WhatsApp Web load timeout (ms)                        |

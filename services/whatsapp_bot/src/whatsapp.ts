@@ -36,6 +36,8 @@ let context: BrowserContext | null = null;
 let page: Page | null = null;
 let ready = false;
 let qrVisible = false;
+// 8-character linking code shown during phone-number ("pairing code") login.
+let pairingCode: string | null = null;
 
 /** Serialise all page interactions: the poller and senders share one page. */
 let opQueue: Promise<unknown> = Promise.resolve();
@@ -50,12 +52,19 @@ export function getStatus(): {
   ready: boolean;
   qrVisible: boolean;
   authenticated: boolean;
+  pairingCode: string | null;
 } {
   return {
     ready,
     qrVisible,
     authenticated: ready && !qrVisible,
+    pairingCode,
   };
+}
+
+/** The current pairing code, if a phone-number login is in progress. */
+export function getPairingCode(): string | null {
+  return pairingCode;
 }
 
 /** Launch browser, open WhatsApp Web, and wait for authentication. */
@@ -90,56 +99,165 @@ export async function init(): Promise<void> {
     timeout: config.pageLoadTimeout,
   });
 
-  // Wait for either the QR code or the chat list (already authenticated)
   console.log("[whatsapp] Waiting for authentication...");
 
-  try {
-    await Promise.race([waitForQrCode(page), waitForChatList(page)]);
-  } catch (err) {
-    console.error("[whatsapp] Auth detection failed:", err);
-    throw err;
-  }
-}
-
-async function waitForQrCode(p: Page): Promise<void> {
-  // WhatsApp Web shows a canvas with the QR code
-  await p.waitForSelector(
-    'canvas[aria-label="Scan this QR code to link a device!"], div[data-ref]',
-    {
-      timeout: config.pageLoadTimeout,
-    },
-  );
-
-  // Check if we actually landed on the QR (not the chat list)
-  const chatList = await p.$(
-    'div[aria-label="Chat list"], div[id="pane-side"]',
-  );
-  if (chatList) {
-    // Already authenticated — the race was won by an old session
+  // 1. A restored session shows the chat list almost immediately.
+  if (await chatListAppeared(page, 10_000)) {
     ready = true;
     qrVisible = false;
     console.log("[whatsapp] Already authenticated (session restored).");
     return;
   }
 
-  qrVisible = true;
-  ready = false;
-  console.log(
-    "[whatsapp] QR code visible — scan it with your phone to authenticate.",
-  );
-  console.log("[whatsapp] GET /qr to view the QR code from a browser.");
+  // 2. This device needs to be linked. Prefer the pairing code (phone number)
+  //    when configured; otherwise fall back to QR.
+  if (config.phoneNumber) {
+    try {
+      await requestPairingCode(page);
+    } catch (err) {
+      console.error(
+        "[whatsapp] Pairing-code login failed, falling back to QR:",
+        err instanceof Error ? err.message : err,
+      );
+      await showQrCode(page);
+    }
+  } else {
+    await showQrCode(page);
+  }
 
-  // Wait for QR scan in the background so init() can return and start the API
-  void waitForChatList(p);
+  // 3. Wait — in the background, so init() can return and the API can start —
+  //    for the user to complete linking on their phone.
+  void waitForLinked(page);
 }
 
-async function waitForChatList(p: Page): Promise<void> {
-  await p.waitForSelector('div[id="pane-side"], div[aria-label="Chat list"]', {
-    timeout: 120_000, // 2 minutes to scan QR
-  });
-  ready = true;
+/** Resolve true if the chat list appears within `timeout` ms, else false. */
+async function chatListAppeared(p: Page, timeout: number): Promise<boolean> {
+  try {
+    await p.waitForSelector('div[id="pane-side"], div[aria-label="Chat list"]', {
+      timeout,
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Mark the QR code as visible so it can be scanned / fetched via /qr. */
+async function showQrCode(p: Page): Promise<void> {
+  await p
+    .waitForSelector(
+      'canvas[aria-label*="QR" i], canvas[aria-label*="Scan" i], div[data-ref]',
+      { timeout: config.pageLoadTimeout },
+    )
+    .catch(() => {});
+  qrVisible = true;
+  ready = false;
+  pairingCode = null;
+  console.log(
+    "[whatsapp] QR code visible — scan it with your phone, or GET /qr to view it.",
+  );
+}
+
+/**
+ * Drive WhatsApp Web's "Log in with phone number" flow: switch to phone login,
+ * enter the configured number, and read the 8-character linking code. The user
+ * enters that code on their phone (Linked devices → Link a device → Link with
+ * phone number instead). WhatsApp Web's markup shifts between releases, so each
+ * step tries several selector variants.
+ */
+async function requestPairingCode(p: Page): Promise<void> {
+  console.log(
+    `[whatsapp] Requesting pairing code for +${config.phoneNumber}...`,
+  );
+
+  // Switch from the default QR screen to phone-number login.
+  const linkWithPhone = p
+    .getByRole("button", { name: /phone number|numero di telefono/i })
+    .or(p.getByText(/log in with phone number|numero di telefono/i))
+    .first();
+  await linkWithPhone.click({ timeout: 30_000 });
+
+  // Enter the phone number (international format, digits only — the country is
+  // inferred from the it-IT locale we launch Chromium with).
+  const phoneInput = p
+    .getByRole("textbox", { name: /phone|telefono/i })
+    .or(p.locator('form input[type="text"]'))
+    .first();
+  await phoneInput.waitFor({ timeout: 15_000 });
+  await phoneInput.click();
+  await phoneInput.fill("");
+  await phoneInput.pressSequentially(config.phoneNumber, { delay: 50 });
+
+  await p
+    .getByRole("button", { name: /next|avanti/i })
+    .first()
+    .click({ timeout: 10_000 });
+
+  pairingCode = await readPairingCode(p);
   qrVisible = false;
-  console.log("[whatsapp] Authenticated and ready.");
+  console.log(
+    `[whatsapp] ===== PAIRING CODE: ${pairingCode} =====\n` +
+      "[whatsapp] On your phone: Settings → Linked devices → Link a device →\n" +
+      '[whatsapp] "Link with phone number instead", then enter the code above.',
+  );
+}
+
+// Runs in the browser (needs DOM APIs). Built from a string via `new Function`
+// — like fn2/debugFn below — so tsc doesn't require lib:dom for this file.
+const readPairingCodeFn = new Function(`
+  const valid = (s) => !!s && /^[A-Z0-9]{4}-?[A-Z0-9]{4}$/i.test(String(s).trim());
+
+  // 1. Some builds expose the code as an attribute.
+  const attrEl = document.querySelector("[data-link-code]");
+  const attr = attrEl && attrEl.getAttribute("data-link-code");
+  if (valid(attr)) return attr.trim();
+
+  // 2. The code is usually rendered as a row of single-character cells.
+  //    Find a small container whose concatenated child text is 8 chars.
+  const containers = document.querySelectorAll("div, span");
+  for (const c of containers) {
+    const kids = Array.from(c.children);
+    if (kids.length >= 8 && kids.length <= 10) {
+      const joined = kids.map(k => (k.textContent || "").trim()).join("");
+      if (/^[A-Z0-9]{8}$/i.test(joined)) return joined;
+    }
+  }
+
+  // 3. Fallback: any short element whose text is the code itself.
+  for (const c of containers) {
+    const t = (c.textContent || "").trim();
+    if (t.length <= 9 && valid(t)) return t;
+  }
+  return null;
+`) as () => string | null;
+
+/** Poll the page for the 8-character linking code (formatted "XXXX-XXXX"). */
+async function readPairingCode(p: Page, timeoutMs = 60_000): Promise<string> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const code = await p.evaluate(readPairingCodeFn);
+    if (code) {
+      const compact = code.replace(/-/g, "").toUpperCase();
+      return `${compact.slice(0, 4)}-${compact.slice(4, 8)}`;
+    }
+    await p.waitForTimeout(2000);
+  }
+  throw new Error("Pairing code did not appear in time.");
+}
+
+/** Wait for the chat list to appear after the user links the device. */
+async function waitForLinked(p: Page): Promise<void> {
+  // Generous: the user may take a while to enter the code / scan the QR.
+  if (await chatListAppeared(p, 300_000)) {
+    ready = true;
+    qrVisible = false;
+    pairingCode = null;
+    console.log("[whatsapp] Authenticated and ready.");
+  } else {
+    console.error(
+      "[whatsapp] Timed out waiting for the device to be linked. Restart to retry.",
+    );
+  }
 }
 
 // WhatsApp Web's DOM attributes change between releases, so every lookup
