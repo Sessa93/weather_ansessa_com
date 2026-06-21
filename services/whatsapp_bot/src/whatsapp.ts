@@ -86,7 +86,7 @@ export async function init(): Promise<void> {
     ],
     userAgent:
       "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
-    viewport: { width: 1280, height: 900 },
+    viewport: { width: 1280, height: 1100 },
     locale: "it-IT",
     timezoneId: "Europe/Rome",
   });
@@ -170,12 +170,16 @@ async function requestPairingCode(p: Page): Promise<void> {
     `[whatsapp] Requesting pairing code for +${config.phoneNumber}...`,
   );
 
-  // Switch from the default QR screen to phone-number login.
+  // Switch from the default QR screen to phone-number login. The button can
+  // render just outside the headless viewport, where Playwright's auto-scroll
+  // can't reach it — force the click to bypass the viewport actionability check.
   const linkWithPhone = p
     .getByRole("button", { name: /phone number|numero di telefono/i })
     .or(p.getByText(/log in with phone number|numero di telefono/i))
     .first();
-  await linkWithPhone.click({ timeout: 30_000 });
+  await linkWithPhone.waitFor({ state: "attached", timeout: 30_000 });
+  await linkWithPhone.scrollIntoViewIfNeeded().catch(() => {});
+  await linkWithPhone.click({ timeout: 30_000, force: true });
 
   // Enter the phone number (international format, digits only — the country is
   // inferred from the it-IT locale we launch Chromium with).
@@ -184,14 +188,13 @@ async function requestPairingCode(p: Page): Promise<void> {
     .or(p.locator('form input[type="text"]'))
     .first();
   await phoneInput.waitFor({ timeout: 15_000 });
-  await phoneInput.click();
+  await phoneInput.click({ force: true });
   await phoneInput.fill("");
   await phoneInput.pressSequentially(config.phoneNumber, { delay: 50 });
 
-  await p
-    .getByRole("button", { name: /next|avanti/i })
-    .first()
-    .click({ timeout: 10_000 });
+  const nextButton = p.getByRole("button", { name: /next|avanti/i }).first();
+  await nextButton.scrollIntoViewIfNeeded().catch(() => {});
+  await nextButton.click({ timeout: 10_000, force: true });
 
   pairingCode = await readPairingCode(p);
   qrVisible = false;
@@ -286,9 +289,46 @@ function escapeAttr(value: string): string {
   return value.replace(/[\\"]/g, "\\$&");
 }
 
+/**
+ * Dismiss modal dialogs that overlay the UI and block interaction — e.g. the
+ * "What's new on WhatsApp Web" announcement. Cheap no-op when none is present.
+ */
+async function dismissPopups(p: Page): Promise<void> {
+  try {
+    const dialog = p.locator('div[role="dialog"]').first();
+    if (!(await dialog.isVisible().catch(() => false))) return;
+
+    const closeBtn = dialog
+      .locator(
+        [
+          '[aria-label="Close" i]',
+          '[aria-label="Chiudi" i]',
+          '[data-icon="x"]',
+          '[data-icon="x-viewport"]',
+          '[data-icon="close"]',
+        ].join(", "),
+      )
+      .first();
+
+    if (await closeBtn.count()) {
+      await closeBtn.click({ force: true }).catch(() => {});
+    } else {
+      // No recognisable close button — Escape dismisses most WhatsApp modals.
+      await p.keyboard.press("Escape").catch(() => {});
+    }
+    await dialog.waitFor({ state: "hidden", timeout: 3000 }).catch(() => {});
+    console.log("[whatsapp] Dismissed an overlay dialog.");
+  } catch {
+    // Never let popup handling break the caller.
+  }
+}
+
 /** Open a chat by display name: click its sidebar row, searching if needed. */
 async function openChat(p: Page, chatName: string): Promise<void> {
   const safeName = escapeAttr(chatName);
+
+  // Clear any modal (e.g. "What's new") that would intercept clicks.
+  await dismissPopups(p);
 
   // Already open? The conversation header shows the chat title.
   const header = p.locator(`#main header span[title="${safeName}"]`);
