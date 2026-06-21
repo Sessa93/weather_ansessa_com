@@ -137,6 +137,7 @@ services:
         condition: service_healthy
     ports:
       - "${WHATSAPP_BOT_PORT:-8085}:8085"
+      - "${WHATSAPP_CDP_PORT:-9222}:9222"
     environment:
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/weather
       STATION_NAME: ${STATION_NAME:-Jerago con Orago, Italy}
@@ -150,6 +151,7 @@ services:
       DAILY_SUMMARY_CRON: ${DAILY_SUMMARY_CRON:-0 8 * * *}
       DAILY_SUMMARY_GROUPS: ${WHATSAPP_DAILY_GROUPS:-}
       HEADLESS: ${WHATSAPP_HEADLESS:-true}
+      REMOTE_DEBUG_PORT: ${WHATSAPP_REMOTE_DEBUG_PORT:-9222}
       TZ: ${TZ:-Europe/Rome}
     dns:
       - "8.8.8.8"

@@ -76,14 +76,29 @@ export async function init(): Promise<void> {
 
   console.log(`[whatsapp] Launching Chromium (headless=${config.headless})...`);
 
+  const args = [
+    "--no-sandbox",
+    "--disable-setuid-sandbox",
+    "--disable-dev-shm-usage",
+    "--disable-gpu",
+  ];
+  if (config.remoteDebugPort > 0) {
+    // Expose CDP beyond localhost so the mapped Docker port reaches it. Chrome
+    // accepts remote-debugging connections whose Host header is an IP literal
+    // (e.g. a tailnet address), which is what chrome://inspect sends.
+    args.push(
+      `--remote-debugging-port=${config.remoteDebugPort}`,
+      "--remote-debugging-address=0.0.0.0",
+    );
+    console.log(
+      `[whatsapp] CDP remote debugging on port ${config.remoteDebugPort} ` +
+        "(attach via chrome://inspect → Discover network targets → host:port).",
+    );
+  }
+
   context = await chromium.launchPersistentContext(config.authDir, {
     headless: config.headless,
-    args: [
-      "--no-sandbox",
-      "--disable-setuid-sandbox",
-      "--disable-dev-shm-usage",
-      "--disable-gpu",
-    ],
+    args,
     userAgent:
       "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
     viewport: { width: 1280, height: 1100 },
@@ -170,14 +185,30 @@ async function requestPairingCode(p: Page): Promise<void> {
     `[whatsapp] Requesting pairing code for +${config.phoneNumber}...`,
   );
 
+  // The login screen renders asynchronously and an announcement dialog
+  // ("What's new on WhatsApp Web") can sit on top of it. Wait for the screen to
+  // appear, then clear any overlay, before looking for the phone-login control.
+  await p
+    .waitForSelector(
+      'canvas[aria-label*="QR" i], canvas[aria-label*="Scan" i], div[data-ref], [role="button"]',
+      { timeout: config.pageLoadTimeout },
+    )
+    .catch(() => {});
+  await dismissPopups(p);
+
   // Switch from the default QR screen to phone-number login. The button can
   // render just outside the headless viewport, where Playwright's auto-scroll
   // can't reach it — force the click to bypass the viewport actionability check.
   const linkWithPhone = p
     .getByRole("button", { name: /phone number|numero di telefono/i })
-    .or(p.getByText(/log in with phone number|numero di telefono/i))
+    .or(p.getByText(/phone number|numero di telefono/i))
     .first();
-  await linkWithPhone.waitFor({ state: "attached", timeout: 30_000 });
+  try {
+    await linkWithPhone.waitFor({ state: "visible", timeout: 45_000 });
+  } catch (err) {
+    await dumpDebug(p, "pairing-no-phone-button");
+    throw err;
+  }
   await linkWithPhone.scrollIntoViewIfNeeded().catch(() => {});
   await linkWithPhone.click({ timeout: 30_000, force: true });
 
@@ -320,6 +351,19 @@ async function dismissPopups(p: Page): Promise<void> {
     console.log("[whatsapp] Dismissed an overlay dialog.");
   } catch {
     // Never let popup handling break the caller.
+  }
+}
+
+/** Save a screenshot + page HTML to the auth dir for diagnosing login issues. */
+async function dumpDebug(p: Page, tag: string): Promise<void> {
+  try {
+    const png = join(config.authDir, `debug-${tag}.png`);
+    await p.screenshot({ path: png, fullPage: true });
+    const html = join(config.authDir, `debug-${tag}.html`);
+    writeFileSync(html, await p.content());
+    console.log(`[whatsapp] Saved debug artifacts: ${png}, ${html}`);
+  } catch (err) {
+    console.error("[whatsapp] Failed to write debug artifacts:", err);
   }
 }
 

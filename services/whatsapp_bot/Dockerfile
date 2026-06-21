@@ -19,5 +19,7 @@ ENV AUTH_DIR=/data/auth
 ENV HEADLESS=true
 
 EXPOSE 8085
+# CDP remote debugging (enabled when REMOTE_DEBUG_PORT=9222)
+EXPOSE 9222
 
 CMD ["npm", "start"]

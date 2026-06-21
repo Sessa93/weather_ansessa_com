@@ -27,6 +27,14 @@ export const config = {
   /** Run Chromium headless (true in Docker, set to false for local QR scan). */
   headless: (process.env.HEADLESS ?? "true") === "true",
 
+  /**
+   * When > 0, expose Chrome DevTools Protocol on this port (bound to 0.0.0.0)
+   * so you can attach an interactive DevTools session — e.g. from a local
+   * Chrome via chrome://inspect → "Discover network targets" → host:PORT — to
+   * complete WhatsApp login by hand. 0 disables it.
+   */
+  remoteDebugPort: parseInt(process.env.REMOTE_DEBUG_PORT ?? "0", 10),
+
   /** How long to wait for WhatsApp Web to load (ms). */
   pageLoadTimeout: parseInt(process.env.PAGE_LOAD_TIMEOUT ?? "60000", 10),
 

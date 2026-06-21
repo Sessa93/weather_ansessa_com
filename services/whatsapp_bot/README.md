@@ -130,5 +130,28 @@ curl -X POST http://localhost:8085/daily-summary
 | `DAILY_SUMMARY_GROUPS`  | `WHATSAPP_GROUP_NAME`     | Comma-separated groups for summaries and alerts       |
 | `TZ`                    | `Europe/Rome`             | Timezone for crons and timestamps                     |
 | `HEADLESS`              | `true`                    | Run Chromium headless                                 |
+| `REMOTE_DEBUG_PORT`     | `9222`                    | Expose CDP on this port (0 disables); see below       |
 | `AUTH_DIR`              | `/data/auth`              | Path to persist browser session                       |
 | `PAGE_LOAD_TIMEOUT`     | `60000`                   | WhatsApp Web load timeout (ms)                        |
+
+## Interactive debugging (CDP)
+
+When `REMOTE_DEBUG_PORT` is set (default `9222`, exposed by docker-compose), the
+headless Chromium also serves the Chrome DevTools Protocol. You can attach a
+real DevTools session to **see and click the live page** — useful to complete
+WhatsApp login by hand or to dismiss popups when selectors drift:
+
+1. In your local Chrome, open `chrome://inspect`.
+2. Click **Configure…** next to "Discover network targets" and add
+   `HOST:9222` (e.g. `100.86.21.32:9222`).
+3. The WhatsApp Web page appears under "Remote Target" — click **inspect** to
+   open an interactive DevTools window with a clickable screencast.
+
+Notes:
+
+- Chrome only accepts remote-debugging connections whose `Host` header is an IP
+  literal (like a tailnet address) or localhost — use the IP, not a hostname.
+- This endpoint is unauthenticated; only expose it on a trusted network
+  (e.g. tailnet). Set `REMOTE_DEBUG_PORT=0` to disable it.
+- Once logged in, the session persists to the `whatsapp-auth` volume, so you can
+  disable CDP again afterwards.
