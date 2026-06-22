@@ -570,6 +570,30 @@ export function startListening(
   console.log(
     `[whatsapp] Listening for messages in "${groupName}" (every ${config.pollIntervalMs}ms)`,
   );
+
+  // Periodically recycle the browser so WhatsApp Web's ever-growing renderer
+  // heap can't exhaust the host (see recycleBrowser). Skip if one is already
+  // running so a slow recycle can't stack.
+  if (config.browserRecycleMs > 0) {
+    let recycling = false;
+    setInterval(() => {
+      if (recycling) return;
+      recycling = true;
+      void recycleBrowser()
+        .catch((err) =>
+          console.error(
+            "[whatsapp] Recycle failed:",
+            err instanceof Error ? err.message : err,
+          ),
+        )
+        .finally(() => {
+          recycling = false;
+        });
+    }, config.browserRecycleMs);
+    console.log(
+      `[whatsapp] Browser recycle scheduled every ${config.browserRecycleMs / 1000}s`,
+    );
+  }
 }
 
 // Built once: like fn2, this has no per-call dependencies (the row limit is
@@ -620,6 +644,43 @@ export async function getScreenshot(): Promise<Buffer | null> {
     if (!page) return null;
     return page.screenshot({ type: "png" }) as Promise<Buffer>;
   });
+}
+
+/**
+ * Recycle the browser to reclaim memory. WhatsApp Web's renderer heap grows
+ * unbounded the longer the page stays open (hundreds of MB after a day);
+ * closing the persistent context kills the renderer process and frees it,
+ * and the saved session in authDir lets init() reconnect without re-linking.
+ *
+ * The close runs under the page lock so it can't race a poll or send. init()
+ * then runs OUTSIDE the lock (it may wait on auth): during that window `page`
+ * is replaced and `ready` is false, so polls and sends safely no-op until the
+ * fresh page is ready, rather than blocking the lock.
+ */
+async function recycleBrowser(): Promise<void> {
+  console.log("[whatsapp] Recycling browser to reclaim memory...");
+  await withPageLock(async () => {
+    ready = false;
+    if (context) {
+      await context.close().catch(() => {});
+      context = null;
+      page = null;
+    }
+  });
+  try {
+    await init();
+  } catch (err) {
+    // Re-init after a clean close should normally succeed; if it doesn't, the
+    // bot would be stuck with no page until the next recycle. Exit instead so
+    // restart:unless-stopped brings up a fresh container (auth + seen state
+    // persist on disk, so no re-link and no message replay).
+    console.error(
+      "[whatsapp] Re-init after recycle failed, exiting for restart:",
+      err instanceof Error ? err.message : err,
+    );
+    process.exit(1);
+  }
+  console.log("[whatsapp] Browser recycled; reconnected.");
 }
 
 /**

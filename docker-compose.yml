@@ -132,6 +132,12 @@ services:
     image: ghcr.io/sessa93/weather_ansessa_com/whatsapp-bot:latest
     build: ./services/whatsapp_bot
     restart: unless-stopped
+    # Backstop for the headless-Chromium memory growth: cap the container so a
+    # runaway renderer can't OOM the 2 GB host. The bot recycles the browser
+    # every 6h (BROWSER_RECYCLE_MS) to stay well under this; if that ever
+    # fails, the cgroup kills it and restart:unless-stopped brings it back
+    # (seen-messages.json persists, so no message replay).
+    mem_limit: 900m
     depends_on:
       postgres:
         condition: service_healthy

@@ -121,6 +121,7 @@ curl -X POST http://localhost:8085/daily-summary
 | `TRIGGER_PREFIX`        | `@meteo`                  | Prefix that triggers the assistant (case-insensitive) |
 | `BOT_NAME`              | `Meteo Jerago Bot`        | Signature prepended to every outgoing message         |
 | `POLL_INTERVAL_MS`      | `3000`                    | How often the open chat is polled for new messages    |
+| `BROWSER_RECYCLE_MS`    | `21600000`                | Recycle the browser this often to free memory (0=off) |
 | `OPENAI_API_KEY`        | (required)                | OpenAI key for the agent and summaries                |
 | `OPENAI_MODEL`          | `gpt-4.1`                 | OpenAI model                                          |
 | `DATABASE_URL`          | (required)                | PostgreSQL with `weather_readings`                    |

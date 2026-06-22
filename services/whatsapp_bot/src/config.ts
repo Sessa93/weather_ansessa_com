@@ -47,6 +47,14 @@ export const config = {
   /** How often to poll the open chat for new messages (ms). */
   pollIntervalMs: parseInt(process.env.POLL_INTERVAL_MS ?? "3000", 10),
 
+  /**
+   * How often to recycle the browser to reclaim memory (ms); 0 disables.
+   * WhatsApp Web's renderer heap grows unbounded the longer the page stays
+   * open, so we close and relaunch the context periodically. Default 6h.
+   * `||` (not `??`) so an empty value from Compose falls back to the default.
+   */
+  browserRecycleMs: parseInt(process.env.BROWSER_RECYCLE_MS || "21600000", 10),
+
   // OpenAI
   openaiApiKey: required("OPENAI_API_KEY"),
   openaiModel: process.env.OPENAI_MODEL ?? "gpt-4.1",
